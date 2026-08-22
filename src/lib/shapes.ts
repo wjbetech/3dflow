@@ -22,6 +22,7 @@ export type ShapeField = {
   recipe: ShapeRecipe;
   geometry: THREE.BufferGeometry;
   cappedGeometry: THREE.BufferGeometry;
+  lidVertexStart: number;
   irregularity: number;
   centerOffset: THREE.Vector3;
   bounds: THREE.Box3;
@@ -130,8 +131,11 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
 
   const mouthY =
     recipe.mouth >= 1 ? null : bounds.min.y + recipe.mouth * (bounds.max.y - bounds.min.y);
-  const cappedGeometry =
-    mouthY === null ? geometry : buildCappedGeometry(geometry, mouthY);
+  const capped =
+    mouthY === null
+      ? { geometry, lidVertexStart: Number.POSITIVE_INFINITY }
+      : buildCappedGeometry(geometry, mouthY);
+  const cappedGeometry = capped.geometry;
   const rimPoints = mouthY === null ? [] : collectRimLoop(cappedGeometry, mouthY);
   const fillModel = createFillModel(cappedGeometry);
 
@@ -139,6 +143,7 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
     recipe,
     geometry,
     cappedGeometry,
+    lidVertexStart: capped.lidVertexStart,
     irregularity,
     centerOffset,
     bounds,
@@ -179,7 +184,6 @@ function buildCappedGeometry(source: THREE.BufferGeometry, mouthY: number) {
   const srcCount = srcIndex ? srcIndex.count : srcPositions.count;
 
   const outPositions: number[] = [];
-  const cutSegments: Array<[[number, number], [number, number]]> = [];
   const readVertex = (i: number) => [
     srcPositions.getX(i),
     srcPositions.getY(i),
@@ -193,26 +197,35 @@ function buildCappedGeometry(source: THREE.BufferGeometry, mouthY: number) {
       readVertex(srcIndex ? srcIndex.getX(start + 2) : start + 2)
     ];
 
-    emitClippedTriangle(tri, mouthY, outPositions, cutSegments);
+    emitClippedTriangle(tri, mouthY, outPositions);
   }
 
-  appendLidFans(outPositions, cutSegments, mouthY);
+  const lidVertexStart = outPositions.length / 3;
+
+  appendLidFromBoundary(source, mouthY, outPositions);
 
   const capped = new THREE.BufferGeometry();
   capped.setAttribute("position", new THREE.Float32BufferAttribute(outPositions, 3));
+
+  const wallVertexCount = lidVertexStart;
+  const lidVertexCount = outPositions.length / 3 - lidVertexStart;
+
+  if (lidVertexCount > 0) {
+    capped.addGroup(0, wallVertexCount, 0);
+    capped.addGroup(wallVertexCount, lidVertexCount, 1);
+  }
+
   capped.computeVertexNormals();
-  return capped;
+
+  return { geometry: capped, lidVertexStart };
 }
 
 function emitClippedTriangle(
   triangle: Array<[number, number, number]>,
   mouthY: number,
-  out: number[],
-  cutSegments: Array<[[number, number], [number, number]]>
+  out: number[]
 ) {
   const kept: Array<[number, number, number]> = [];
-  let segmentA: [number, number] | null = null;
-  let segmentB: [number, number] | null = null;
 
   for (let i = 0; i < 3; i += 1) {
     const current = triangle[i];
@@ -225,20 +238,21 @@ function emitClippedTriangle(
     }
 
     if (currentBelow !== nextBelow) {
-      const t = (mouthY - current[1]) / (next[1] - current[1]);
-      const point: [number, number, number] = [
-        current[0] + (next[0] - current[0]) * t,
-        mouthY,
-        current[2] + (next[2] - current[2]) * t
-      ];
-      kept.push(point);
+      let low = current;
+      let high = next;
 
-      const flatPoint: [number, number] = [point[0], point[2]];
-      if (!segmentA) {
-        segmentA = flatPoint;
-      } else {
-        segmentB = flatPoint;
+      if (low[1] > high[1]) {
+        const swap = low;
+        low = high;
+        high = swap;
       }
+
+      const t = (mouthY - low[1]) / (high[1] - low[1]);
+      kept.push([
+        low[0] + (high[0] - low[0]) * t,
+        mouthY,
+        low[2] + (high[2] - low[2]) * t
+      ]);
     }
   }
 
@@ -246,137 +260,98 @@ function emitClippedTriangle(
     return;
   }
 
-  if (segmentA && segmentB) {
-    cutSegments.push([segmentA, segmentB]);
-  }
-
   for (let i = 1; i < kept.length - 1; i += 1) {
     pushTriangle(out, kept[0], kept[i], kept[i + 1]);
   }
 }
 
-function appendLidFans(
-  out: number[],
-  rawSegments: Array<[[number, number], [number, number]]>,
-  mouthY: number
+function appendLidFromBoundary(
+  source: THREE.BufferGeometry,
+  mouthY: number,
+  out: number[]
 ) {
-  const adjacency = new Map<string, Array<[number, number]>>();
-  const keyOf = (p: [number, number]) => `${p[0].toFixed(5)}:${p[1].toFixed(5)}`;
-  const seenSegments = new Set<string>();
+  const srcPositions = source.getAttribute("position");
+  const srcIndex = source.getIndex();
+  const srcCount = srcIndex ? srcIndex.count : srcPositions.count;
+  const points: Array<[number, number]> = [];
+  const seen = new Set<string>();
 
-  for (const [a, b] of rawSegments) {
-    if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-7) {
-      continue;
+  for (let start = 0; start < srcCount; start += 3) {
+    for (let corner = 0; corner < 3; corner += 1) {
+      const i0 = srcIndex ? srcIndex.getX(start + corner) : start + corner;
+      const i1 = srcIndex ? srcIndex.getX(start + ((corner + 1) % 3)) : start + ((corner + 1) % 3);
+
+      const y0 = srcPositions.getY(i0);
+      const y1 = srcPositions.getY(i1);
+
+      if ((y0 < mouthY) === (y1 < mouthY)) {
+        continue;
+      }
+
+      const t = (mouthY - y0) / (y1 - y0);
+      const x = srcPositions.getX(i0) + (srcPositions.getX(i1) - srcPositions.getX(i0)) * t;
+      const z = srcPositions.getZ(i0) + (srcPositions.getZ(i1) - srcPositions.getZ(i0)) * t;
+      const key = `${x.toFixed(5)}:${z.toFixed(5)}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      points.push([x, z]);
     }
-
-    const forwardKey = `${keyOf(a)}>${keyOf(b)}`;
-    const backwardKey = `${keyOf(b)}>${keyOf(a)}`;
-
-    if (seenSegments.has(forwardKey) || seenSegments.has(backwardKey)) {
-      continue;
-    }
-
-    seenSegments.add(forwardKey);
-    pushToMap(adjacency, keyOf(a), b);
-    pushToMap(adjacency, keyOf(b), a);
   }
 
-  while (adjacency.size > 0) {
-    const startEntry = adjacency.keys().next();
-
-    if (startEntry.done || !startEntry.value) {
-      break;
-    }
-
-    const startKey = startEntry.value;
-    const loop: Array<[number, number]> = [];
-    let cursorKey: string | null = startKey;
-    let closed = false;
-
-    while (cursorKey && adjacency.has(cursorKey)) {
-      const cursorParts = cursorKey.split(":").map(Number);
-      loop.push([cursorParts[0], cursorParts[1]]);
-
-      const candidates = adjacency.get(cursorKey);
-
-      if (!candidates || candidates.length === 0) {
-        adjacency.delete(cursorKey);
-        break;
-      }
-
-      const nextPoint = candidates.pop() as [number, number];
-      const remaining = adjacency.get(cursorKey);
-
-      if (!remaining || remaining.length === 0) {
-        adjacency.delete(cursorKey);
-      }
-
-      const nextKey = keyOf(nextPoint);
-
-      if (nextKey === startKey) {
-        closed = true;
-        break;
-      }
-
-      cursorKey = nextKey;
-    }
-
-    const dedupedLoop: Array<[number, number]> = [];
-
-    for (const point of loop) {
-      const previous = dedupedLoop[dedupedLoop.length - 1];
-
-      if (!previous || Math.hypot(previous[0] - point[0], previous[1] - point[1]) > 1e-7) {
-        dedupedLoop.push(point);
-      }
-    }
-
-    if (!closed || dedupedLoop.length < 3) {
-      continue;
-    }
-
-    let centroidX = 0;
-    let centroidZ = 0;
-
-    for (const [x, z] of dedupedLoop) {
-      centroidX += x;
-      centroidZ += z;
-    }
-
-    centroidX /= dedupedLoop.length;
-    centroidZ /= dedupedLoop.length;
-
-    let doubledArea = 0;
-
-    for (let i = 0; i < dedupedLoop.length; i += 1) {
-      const from = dedupedLoop[i];
-      const to = dedupedLoop[(i + 1) % dedupedLoop.length];
-      doubledArea += from[0] * to[1] - to[0] * from[1];
-    }
-
-    if (Math.abs(doubledArea) < 1e-9) {
-      continue;
-    }
-
-    const orderedLoop = doubledArea > 0 ? [...dedupedLoop].reverse() : dedupedLoop;
-    const centre: [number, number] = [centroidX, centroidZ];
-
-    for (let i = 0; i < orderedLoop.length; i += 1) {
-      const from = orderedLoop[i];
-      const to = orderedLoop[(i + 1) % orderedLoop.length];
-
-      pushTriangleFlat(out, centre, from, to, mouthY);
-    }
+  if (points.length < 3) {
+    return;
   }
-}
 
-function pushToMap<K>(map: Map<K, Array<[number, number]>>, key: K, value: [number, number]) {
-  const list = map.get(key);
+  let centroidX = 0;
+  let centroidZ = 0;
 
-  if (list) {
-    list.push(value);
-  } else {
-    map.set(key, [value]);
+  for (const [x, z] of points) {
+    centroidX += x;
+    centroidZ += z;
+  }
+
+  centroidX /= points.length;
+  centroidZ /= points.length;
+
+  points.sort(
+    (a, b) =>
+      Math.atan2(a[1] - centroidZ, a[0] - centroidX) -
+      Math.atan2(b[1] - centroidZ, b[0] - centroidX)
+  );
+
+  let doubledArea = 0;
+
+  for (let i = 0; i < points.length; i += 1) {
+    const from = points[i];
+    const to = points[(i + 1) % points.length];
+    doubledArea += from[0] * to[1] - to[0] * from[1];
+  }
+
+  if (Math.abs(doubledArea) < 1e-9) {
+    return;
+  }
+
+  const ordered = doubledArea > 0 ? [...points].reverse() : points;
+
+  for (let i = 0; i < ordered.length; i += 1) {
+    const from = ordered[i];
+    const to = ordered[(i + 1) % ordered.length];
+
+    out.push(
+      centroidX,
+      mouthY,
+      centroidZ,
+      from[0],
+      mouthY,
+      from[1],
+      to[0],
+      mouthY,
+      to[1]
+    );
   }
 }
 
@@ -387,16 +362,6 @@ function pushTriangle(
   c: [number, number, number]
 ) {
   out.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-}
-
-function pushTriangleFlat(
-  out: number[],
-  a: [number, number],
-  b: [number, number],
-  c: [number, number],
-  y: number
-) {
-  out.push(a[0], y, a[1], b[0], y, b[1], c[0], y, c[1]);
 }
 
 export function measureIrregularity(recipe: ShapeRecipe) {

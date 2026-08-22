@@ -18,6 +18,18 @@ type SceneViewProps = {
 
 const fluidResolution = 20;
 
+const vesselGlassMaterialProps = {
+  color: "#d7e8f6",
+  transparent: true,
+  opacity: 0.06,
+  roughness: 0.08,
+  metalness: 0.04,
+  transmission: 0.18,
+  thickness: 1.15,
+  side: THREE.DoubleSide,
+  depthWrite: false
+};
+
 export function SceneView(props: SceneViewProps) {
   return (
     <Canvas camera={{ position: [3.1, 2.3, 3.6], fov: 42 }} gl={{ alpha: true }}>
@@ -80,18 +92,15 @@ function FluidShape({
   return (
     <group>
       <group ref={vesselRef}>
-        <mesh geometry={field.geometry} scale={1.015} castShadow receiveShadow renderOrder={2}>
-          <meshPhysicalMaterial
-            color="#d7e8f6"
-            transparent
-            opacity={0.06}
-            roughness={0.08}
-            metalness={0.04}
-            transmission={0.18}
-            thickness={1.15}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
+        <mesh geometry={field.cappedGeometry} scale={1.015} castShadow receiveShadow renderOrder={2}>
+          {field.lidVertexStart === Number.POSITIVE_INFINITY ? (
+            <meshPhysicalMaterial {...vesselGlassMaterialProps} />
+          ) : (
+            <>
+              <meshPhysicalMaterial {...vesselGlassMaterialProps} attach="material-0" />
+              <meshBasicMaterial visible={false} attach="material-1" />
+            </>
+          )}
         </mesh>
 
         <ContainedFluid
