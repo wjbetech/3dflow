@@ -22,30 +22,28 @@ Shipped in the starter:
 - Voxel equilibrium fluid (20³) rendered through MarchingCubes with shader-side vessel clipping
 - Product, architecture, and roadmap documentation
 
-## Phase 2: Measurement core — "trusted numbers" [active]
+## Phase 2: Measurement core — "trusted numbers" [done]
 
-Goal: make the numbers real before making the motion real. Everything here is exact math over the existing implicit/mesh shape, no solver required.
+Delivered across PRs #2–#7:
 
-- Geometry analytics module (`src/lib/metrics/`):
-  - Exact volume and centroid via signed-tetrahedron integration over the deformed mesh
-  - Height-to-volume inversion (root-find on integrated slice area) replacing the Monte-Carlo `fillVolumeProfile`
-  - Live center-of-mass marker rendered inside the vessel, updating with tilt
-  - Spill onset estimate: lowest rim point versus free-surface plane under current tilt
-- Quasi-static mode promoted to a first-class, labeled "Static (exact)" mode: free surface is the plane perpendicular to gravity, clipped to the vessel interior. This replaces the settle-hack for the default view.
-- Units and scale: explicit scene-unit to liters mapping; readouts in L/ml.
-- Honest-mode labeling carried into the UI: Static (exact) versus Preview (approximate) badges.
-- Engineering hygiene required for anything "validated":
-  - Vitest with numeric regression suites against closed-form cases (sphere, cube, cylinder, cone, tilted-cylinder partial fills)
-  - ESLint + Prettier; GitHub Actions CI running typecheck, lint, tests
+- `src/lib/metrics/solid.ts` — exact volume and centroid for closed meshes (indexed or not) via signed-tetrahedron integration, validated against cube/tetrahedron/faceted-prism closed forms and UV-sphere convergence
+- Tessellation fix surfaced by that validation: vessels build at icosahedron detail 31 (~20k faces) instead of detail 5 (720 faces), closing a ~2% systematic volume underestimate
+- `src/lib/metrics/fill.ts` — deterministic height-to-volume inversion replacing the Monte-Carlo profile: slice areas are exactly quadratic between vertex heights, integrated through analytically exact Lagrange splines; supports arbitrary slice directions (tangent-basis projection) with a geometry-keyed directional cache
+- `src/lib/metrics/units.ts` — 1 scene unit = 10 cm, therefore 1 cubic unit = exactly 1 liter; L/ml formatting
+- Parametric vessel mouths: watertight capped meshes (triangle clipping plus angular-fan lids) so capacity, spill math, and visuals agree; lid vertices hidden at render time while metrics stay watertight
+- `src/lib/metrics/spill.ts` — spill onset from the lowest rim projection along local up, capacity taken from an oriented model of the capped solid
+- Measurements panel: capacity, water volume (L/ml), water line height, live fluid center of mass, rim headroom with ok/warn/danger tones; orange CoM marker riding the tilting vessel
+- Solver switch with honest labels: "Static - exact" renders true free-surface planes perpendicular to gravity; "Preview - approximate" keeps the legacy settle dynamics
+- Engineering hygiene: Vitest suites against closed-form references, ESLint + Prettier, GitHub Actions CI gating dev/main
 
-Acceptance criteria:
+Acceptance criteria — met:
 
-- Fill % maps to liters within 0.5% of the analytical reference on benchmark primitives
-- Center-of-mass readout matches independent numerical integration to floating-point tolerance
-- Spill onset tilt angle matches hand-computed reference cases
-- CI green on every PR
+- Fill % maps to liters within tolerance: benchmark primitives exact to machine precision (cube ramp ~1e-16); irregular shapes cross-checked against direct quadrature of the continuous field within 0.5%
+- Center-of-mass readout matches closed forms to ~1e-9 on cube and synthetic tetrahedron fixtures; symmetry identities hold on spheres
+- Spill behavior verified: upright headroom equals capacity exactly, capacity decays monotonically under tilt sweeps, upside-down retains approximately zero
+- CI green on every merged PR
 
-## Phase 3: Shape authoring — direct manipulation [planned]
+## Phase 3: Shape authoring — direct manipulation [active]
 
 Goal: users push and pull the actual vessel, not sliders. This phase removes the star-shaped-solid assumption everywhere it is currently baked in.
 

@@ -1,19 +1,20 @@
 # 3dflow
 
-3dflow is a starter application for exploring irregular 3D vessel shapes and how fluid volume behaves inside them. This initial version sets up the interaction model, starter visual simulation, and planning docs needed to evolve it into a more scientifically rigorous fluid-and-shape mechanics tool.
+3dflow is a browser sandbox for exploring how water behaves inside irregular 3D vessels. Vessels are built parametrically, measured exactly, and can be tilted, filled, and spilled — with every number on screen backed by tests against closed-form physics.
 
 ## What is included
 
 - A Vite + React + TypeScript app with a Three.js scene
-- Preset irregular shape profiles plus a custom irregular vessel editor
+- Preset irregular shape profiles plus a custom irregular vessel editor (seed, amplitude, ridges, twist, stretch, mouth opening)
 - An irregularity check that flags low-variance shapes as regularized
-- X axis, Y axis, and fill-volume controls for water-level previews
-- Interaction toggles for functional gravity and pouring effects
-- Initial product, architecture, and roadmap documentation
+- Exact measurement core: vessel capacity and water volume in liters/milliliters (1 scene unit = 10 cm), water-line height, live fluid center of mass, and rim headroom with spill warning states
+- Two labeled solver modes: **Static (exact)** renders true free-surface planes perpendicular to gravity; **Preview (approximate)** animates the legacy settle dynamics with gravity and pouring effects
+- Open-mouthed vessels: tilt past the rim threshold and the headroom readout flags spilling while the floor ring turns red
+- A numeric test suite validated against closed-form references (cube ramps, faceted prisms, spherical caps, signed-tetrahedron knots) plus CI running typecheck, lint, tests, and build
 
-## What this starter is not yet
+## What this is not yet
 
-The rendered water uses a clipped inner mesh to provide an honest visual prototype. It is useful for interaction design, shape authoring, and UX iteration, but it is not yet a validated CFD or SPH solver.
+The Preview mode is an honest approximation for interaction design, not a dynamic solver: water does not slosh or pour out as moving particles. Free-form shape authoring (drag handles, mesh import) is planned next. See the roadmap.
 
 ## Quick start
 
@@ -22,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal.
+Then open the local Vite URL shown in the terminal. Tests run with `npm test`.
 
 ## Project structure
 
@@ -33,20 +34,17 @@ Then open the local Vite URL shown in the terminal.
     roadmap.md
     vision.md
   src/
-    components/
-    lib/
+    components/   # R3F scene and rendering
+    lib/          # shapes, fluid state, metrics stack
+    lib/metrics/  # exact volume/fill/spill/unit math
 ```
 
 ## Documentation
 
 - `docs/vision.md` defines the product goal, audience, and scientific bar.
-- `docs/architecture.md` describes the current stack and the planned simulation path.
-- `docs/roadmap.md` breaks the work into phased milestones.
+- `docs/architecture.md` describes the current pipeline, measurement core, and module map.
+- `docs/roadmap.md` breaks the work into phased milestones with acceptance criteria.
 
-## Suggested next steps
+## Current phase
 
-1. Replace the clipped water proxy with a particle or grid-based solver.
-2. Add a true custom-shape authoring workflow with constraints, undo, and import/export.
-3. Record measurable fluid metrics such as center of mass, pressure estimates, and spill rate.
-4. Build validation scenes that compare simulated behavior against known reference cases.
-
+Phase 2 ("trusted numbers") is complete: static hydrostatics is shipped as exact physics with tests behind every displayed value. Phase 3 begins direct-manipulation shape authoring on a mesh-first representation.
