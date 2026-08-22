@@ -21,14 +21,16 @@ export function createFluidState(field: ShapeField, fillPercent: number, size = 
   const cellCenters = new Float32Array(total * 3);
   const solidIndices: number[] = [];
   const point = new THREE.Vector3();
+  const solidTop = field.mouthY ?? Number.POSITIVE_INFINITY;
 
   forEachCell(size, (x, y, z, index) => {
     getCellPosition(field, size, x, y, z, point);
+
     cellCenters[index * 3] = point.x;
     cellCenters[index * 3 + 1] = point.y;
     cellCenters[index * 3 + 2] = point.z;
 
-    if (isPointInsideField(field, point, 0.08)) {
+    if (point.y <= solidTop && isPointInsideField(field, point, 0.08)) {
       solid[index] = 1;
       solidIndices.push(index);
     }

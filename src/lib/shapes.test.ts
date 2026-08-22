@@ -27,6 +27,22 @@ describe("mouth capping", () => {
 
         expect(cappedMetrics.volume / field.fillModel.totalVolume).toBeCloseTo(1, 6);
         expect(cappedMetrics.volume).toBeLessThan(field.metrics.volume);
+
+        const positionCount = field.cappedGeometry.getAttribute("position").count;
+        const lidCount = positionCount - field.lidVertexStart;
+
+        expect(field.lidVertexStart).toBeGreaterThan(0);
+        expect(field.lidVertexStart % 3).toBe(0);
+        expect(lidCount).toBeGreaterThan(0);
+        expect(lidCount % 3).toBe(0);
+
+        const cappedPositions = field.cappedGeometry.getAttribute("position");
+
+        for (let i = field.lidVertexStart; i < positionCount; i += 1) {
+          expect(cappedPositions.getY(i)).toBeCloseTo(field.mouthY as number, 6);
+        }
+
+        expect(field.cappedGeometry.groups.length).toBe(2);
       } finally {
         field.geometry.dispose();
         if (field.cappedGeometry !== field.geometry) {
