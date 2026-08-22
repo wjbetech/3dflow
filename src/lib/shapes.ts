@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createFillModel, type FillModel } from "./metrics/fill";
 import { computeSolidMetrics, type SolidMetrics } from "./metrics/solid";
+import { buildVoxelSdf, type VoxelSdf } from "./metrics/sdf";
 
 export type ShapeRecipe = {
   id: string;
@@ -29,6 +30,7 @@ export type ShapeField = {
   scale: THREE.Vector3;
   metrics: SolidMetrics;
   fillModel: FillModel;
+  sdf: VoxelSdf;
   mouthY: number | null;
   rimPoints: number[];
 };
@@ -138,6 +140,7 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   const cappedGeometry = capped.geometry;
   const rimPoints = mouthY === null ? [] : collectRimLoop(cappedGeometry, mouthY);
   const fillModel = createFillModel(cappedGeometry);
+  const sdf = buildVoxelSdf(cappedGeometry, 52);
 
   return {
     recipe,
@@ -150,6 +153,7 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
     scale,
     metrics,
     fillModel,
+    sdf,
     mouthY,
     rimPoints
   };
@@ -368,93 +372,6 @@ export function measureIrregularity(recipe: ShapeRecipe) {
   const { geometry, irregularity } = buildIrregularGeometry(recipe);
   geometry.dispose();
   return irregularity;
-}
-
-export function isPointInsideField(field: ShapeField, point: THREE.Vector3, margin = 0) {
-  const uncentered = point.clone().add(field.centerOffset);
-  const scaledPoint = new THREE.Vector3(
-    uncentered.x / field.scale.x,
-    uncentered.y / field.scale.y,
-    uncentered.z / field.scale.z
-  );
-  const distance = scaledPoint.length();
-
-  if (distance <= 1e-5) {
-    return true;
-  }
-
-  const direction = scaledPoint.multiplyScalar(1 / distance);
-  const boundary = Math.max(0.02, getDirectionalRadius(field.recipe, direction) - margin);
-  return distance <= boundary;
-}
-
-export function projectPointInsideField(
-  field: ShapeField,
-  point: THREE.Vector3,
-  margin = 0,
-  target = new THREE.Vector3()
-) {
-  const uncentered = point.clone().add(field.centerOffset);
-  const scaledPoint = new THREE.Vector3(
-    uncentered.x / field.scale.x,
-    uncentered.y / field.scale.y,
-    uncentered.z / field.scale.z
-  );
-  const distance = scaledPoint.length();
-
-  if (distance <= 1e-5) {
-    return target.copy(point);
-  }
-
-  const direction = scaledPoint.multiplyScalar(1 / distance);
-  const boundary = Math.max(0.02, getDirectionalRadius(field.recipe, direction) - margin);
-
-  if (distance <= boundary) {
-    return target.copy(point);
-  }
-
-  const corrected = direction.multiplyScalar(boundary);
-  return target
-    .set(corrected.x * field.scale.x, corrected.y * field.scale.y, corrected.z * field.scale.z)
-    .sub(field.centerOffset);
-}
-
-export function sampleFillPoints(field: ShapeField, fillPercent: number, count: number) {
-  const points: THREE.Vector3[] = [];
-  const cutoffY = getFillCutoffY(field, fillPercent);
-  const size = field.bounds.getSize(new THREE.Vector3());
-  const origin = field.bounds.min;
-  const candidate = new THREE.Vector3();
-  const fallbackDirection = new THREE.Vector3();
-  const maxAttempts = Math.max(600, count * 140);
-
-  for (let attempt = 0; attempt < maxAttempts && points.length < count; attempt += 1) {
-    candidate.set(
-      origin.x + Math.random() * size.x,
-      origin.y + Math.random() * size.y,
-      origin.z + Math.random() * size.z
-    );
-
-    if (candidate.y <= cutoffY && isPointInsideField(field, candidate, 0.16)) {
-      points.push(candidate.clone());
-    }
-  }
-
-  while (points.length < count) {
-    fallbackDirection
-      .set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)
-      .normalize()
-      .multiplyScalar(Math.random() * 0.58);
-
-    candidate.copy(fallbackDirection);
-    candidate.y = Math.min(candidate.y, cutoffY - 0.04);
-
-    if (isPointInsideField(field, candidate, 0.16)) {
-      points.push(candidate.clone());
-    }
-  }
-
-  return points;
 }
 
 export function getFillCutoffY(field: ShapeField, fillPercent: number) {

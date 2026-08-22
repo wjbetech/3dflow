@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { isPointInsideField, type ShapeField } from "./shapes";
+import type { ShapeField } from "./shapes";
 
 export type FluidState = {
   size: number;
@@ -21,7 +21,6 @@ export function createFluidState(field: ShapeField, fillPercent: number, size = 
   const cellCenters = new Float32Array(total * 3);
   const solidIndices: number[] = [];
   const point = new THREE.Vector3();
-  const solidTop = field.mouthY ?? Number.POSITIVE_INFINITY;
 
   forEachCell(size, (x, y, z, index) => {
     getCellPosition(field, size, x, y, z, point);
@@ -30,7 +29,7 @@ export function createFluidState(field: ShapeField, fillPercent: number, size = 
     cellCenters[index * 3 + 1] = point.y;
     cellCenters[index * 3 + 2] = point.z;
 
-    if (point.y <= solidTop && isPointInsideField(field, point, 0.08)) {
+    if (field.sdf.isInside(point, 0.06)) {
       solid[index] = 1;
       solidIndices.push(index);
     }
