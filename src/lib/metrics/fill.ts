@@ -370,15 +370,29 @@ const directionalCache = new WeakMap<THREE.BufferGeometry, Map<string, FillModel
 export function getFillModelForDirection(
   geometry: THREE.BufferGeometry,
   direction: THREE.Vector3,
-  ceiling = Number.POSITIVE_INFINITY
+  ceiling = Number.POSITIVE_INFINITY,
+  renderQuantum = 0
 ) {
   const normalized = direction.clone().normalize();
+
+  if (renderQuantum > 0) {
+    const steps = Math.max(2, Math.round(Math.PI / renderQuantum));
+    const phi = Math.atan2(normalized.y, Math.hypot(normalized.x, normalized.z));
+    const theta = Math.atan2(normalized.z, normalized.x);
+    const snappedPhi = Math.round(phi / (Math.PI / steps)) * (Math.PI / steps);
+    const snappedTheta = Math.round(theta / ((Math.PI * 2) / (steps * 2))) * ((Math.PI * 2) / (steps * 2));
+    const cosPhi = Math.cos(snappedPhi);
+
+    normalized.set(cosPhi * Math.cos(snappedTheta), Math.sin(snappedPhi), cosPhi * Math.sin(snappedTheta));
+    normalized.normalize();
+  }
+
   const key = [
     Math.round(normalized.x * 4096),
     Math.round(normalized.y * 4096),
     Math.round(normalized.z * 4096),
     Number.isFinite(ceiling) ? Math.round(ceiling * 4096) : "inf"
-  ].join("|");
+  ].join(`|q${renderQuantum}`);
 
   let cachedModels = directionalCache.get(geometry);
 

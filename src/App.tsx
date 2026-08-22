@@ -26,6 +26,7 @@ function App() {
   const [tiltY, setTiltY] = useState(-9);
   const [gravityEnabled, setGravityEnabled] = useState(true);
   const [pouringEnabled, setPouringEnabled] = useState(true);
+  const [solverMode, setSolverMode] = useState<"static" | "preview">("static");
   const [customRecipe, setCustomRecipe] = useState<ShapeRecipe>(customRecipeDefaults);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -280,7 +281,9 @@ function App() {
             <section className="control-group">
               <div className="control-group__header">
                 <h2>Measurements</h2>
-                <span className="mini-label">1 unit = 10 cm</span>
+                <span className="mini-label">
+                  {solverMode === "static" ? "Static · exact" : "Preview · approximate"} · 1 unit = 10 cm
+                </span>
               </div>
               <StatRow label="Capacity" value={formatVolume(capacityLiters)} />
               <StatRow label="Water volume" value={formatVolume(waterVolumeLiters)} />
@@ -291,8 +294,26 @@ function App() {
 
             <section className="control-group">
               <div className="control-group__header">
-                <h2>Modes</h2>
-                <span className="mini-label">Preview solver</span>
+                <h2>Solver</h2>
+                <span className="mini-label">{solverMode === "static" ? "Static solver" : "Preview solver"}</span>
+              </div>
+              <div className="segmented">
+                <button
+                  type="button"
+                  className={solverMode === "static" ? "segmented-button active" : "segmented-button"}
+                  onClick={() => setSolverMode("static")}
+                >
+                  Static
+                  <span>exact</span>
+                </button>
+                <button
+                  type="button"
+                  className={solverMode === "preview" ? "segmented-button active" : "segmented-button"}
+                  onClick={() => setSolverMode("preview")}
+                >
+                  Preview
+                  <span>approximate</span>
+                </button>
               </div>
               <Toggle
                 label="Functional gravity"
@@ -315,6 +336,7 @@ function App() {
             fillPercent={fillPercent}
             tiltX={tiltX}
             tiltY={tiltY}
+            mode={solverMode}
             gravityEnabled={gravityEnabled}
             pouringEnabled={pouringEnabled}
             spilling={spillState?.spilling ?? false}

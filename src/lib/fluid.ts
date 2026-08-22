@@ -57,6 +57,38 @@ export function setFluidFillPercent(state: FluidState, fillPercent: number) {
   state.targetMass = Math.round(THREE.MathUtils.clamp(fillPercent / 100, 0, 1) * state.solidIndices.length);
 }
 
+export function setStaticSurface(
+  state: FluidState,
+  up: THREE.Vector3,
+  surfaceOffset: number,
+  options: { fieldStrength: number; transitionWidth: number }
+) {
+  const isoLevel = 52 / options.fieldStrength;
+  const slope = (1 - isoLevel) / Math.max(options.transitionWidth, 1e-6);
+
+  for (let index = 0; index < state.density.length; index += 1) {
+    if (state.solid[index] === 0) {
+      state.density[index] = 0;
+      continue;
+    }
+
+    const projection =
+      state.cellCenters[index * 3] * up.x +
+      state.cellCenters[index * 3 + 1] * up.y +
+      state.cellCenters[index * 3 + 2] * up.z;
+    const depth = surfaceOffset - projection;
+
+    if (depth <= -options.transitionWidth) {
+      state.density[index] = 0;
+      continue;
+    }
+
+    const density = isoLevel + depth * slope;
+
+    state.density[index] = THREE.MathUtils.clamp(density, 0, 1);
+  }
+}
+
 export function stepFluidState(
   state: FluidState,
   gravity: THREE.Vector3,
