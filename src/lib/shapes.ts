@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createFillModel, type FillModel } from "./metrics/fill";
+import { computeSolidMetrics, type SolidMetrics } from "./metrics/solid";
 
 export type ShapeRecipe = {
   id: string;
@@ -22,7 +24,8 @@ export type ShapeField = {
   centerOffset: THREE.Vector3;
   bounds: THREE.Box3;
   scale: THREE.Vector3;
-  fillVolumeProfile: number[];
+  metrics: SolidMetrics;
+  fillModel: FillModel;
 };
 
 export const shapePresets: ShapeRecipe[] = [
@@ -71,7 +74,6 @@ export const customRecipeDefaults: ShapeRecipe = {
 
 const baseRadius = 1.22;
 const vesselTessellationDetail = 31;
-const profileSampleCount = 2400;
 
 export function getRecipeById(id: string) {
   return shapePresets.find((recipe) => recipe.id === id) ?? shapePresets[0];
@@ -116,7 +118,8 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   const variance = radiusSquaredTotal / positions.count - meanRadius * meanRadius;
   const irregularity = Math.max(0, Math.sqrt(Math.max(variance, 0)) * 100);
   const bounds = geometry.boundingBox?.clone() ?? new THREE.Box3();
-  const fillVolumeProfile = buildFillVolumeProfile(recipe, bounds, centerOffset, scale);
+  const metrics = computeSolidMetrics(geometry);
+  const fillModel = createFillModel(geometry);
 
   return {
     recipe,
@@ -125,7 +128,8 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
     centerOffset,
     bounds,
     scale,
-    fillVolumeProfile
+    metrics,
+    fillModel
   };
 }
 
@@ -223,62 +227,33 @@ export function sampleFillPoints(field: ShapeField, fillPercent: number, count: 
 }
 
 export function getFillCutoffY(field: ShapeField, fillPercent: number) {
+  const model = field.fillModel;
   const clampedFill = THREE.MathUtils.clamp(fillPercent / 100, 0, 1);
 
-  if (field.fillVolumeProfile.length === 0) {
-    return THREE.MathUtils.lerp(field.bounds.min.y, field.bounds.max.y, clampedFill);
-  }
-
   if (clampedFill <= 0) {
-    return field.fillVolumeProfile[0] - 0.02;
+    return model.minHeight;
   }
 
   if (clampedFill >= 1) {
-    return field.fillVolumeProfile[field.fillVolumeProfile.length - 1] + 0.02;
+    return model.maxHeight;
   }
 
-  const index = Math.min(
-    field.fillVolumeProfile.length - 1,
-    Math.max(0, Math.floor(clampedFill * (field.fillVolumeProfile.length - 1)))
-  );
+  const targetVolume = clampedFill * model.totalVolume;
+  let low = model.minHeight;
+  let high = model.maxHeight;
+  const range = high - low;
 
-  return field.fillVolumeProfile[index];
-}
+  for (let iteration = 0; iteration < 80 && high - low > range * 1e-9; iteration += 1) {
+    const mid = (low + high) / 2;
 
-function buildFillVolumeProfile(
-  recipe: ShapeRecipe,
-  bounds: THREE.Box3,
-  centerOffset: THREE.Vector3,
-  scale: THREE.Vector3
-) {
-  const rng = createSeededRandom(recipe.seed * 997 + recipe.ridges * 61 + recipe.twist * 131);
-  const size = bounds.getSize(new THREE.Vector3());
-  const origin = bounds.min;
-  const candidate = new THREE.Vector3();
-  const ySamples: number[] = [];
-  const sampleField: ShapeField = {
-    recipe,
-    geometry: new THREE.BufferGeometry(),
-    irregularity: 0,
-    centerOffset,
-    bounds,
-    scale,
-    fillVolumeProfile: []
-  };
-
-  let attempts = 0;
-
-  while (ySamples.length < profileSampleCount && attempts < profileSampleCount * 40) {
-    attempts += 1;
-    candidate.set(origin.x + rng() * size.x, origin.y + rng() * size.y, origin.z + rng() * size.z);
-
-    if (isPointInsideField(sampleField, candidate)) {
-      ySamples.push(candidate.y);
+    if (model.volumeBelow(mid) < targetVolume) {
+      low = mid;
+    } else {
+      high = mid;
     }
   }
 
-  ySamples.sort((a, b) => a - b);
-  return ySamples;
+  return (low + high) / 2;
 }
 
 function getShapeScale(recipe: ShapeRecipe) {
@@ -293,13 +268,4 @@ export function getDirectionalRadius(recipe: ShapeRecipe, direction: THREE.Vecto
   const wobble = recipe.twist * direction.x * direction.y * direction.z * 8;
 
   return Math.max(0.65, baseRadius * (1 + compound * recipe.amplitude + wobble));
-}
-
-function createSeededRandom(seed: number) {
-  let value = Math.floor(Math.abs(seed) * 1000) || 1;
-
-  return () => {
-    value = (value * 1664525 + 1013904223) % 4294967296;
-    return value / 4294967296;
-  };
 }
