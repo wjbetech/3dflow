@@ -1,12 +1,19 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { SceneView } from "./components/SceneView";
 import {
+  buildIrregularGeometry,
   customRecipeDefaults,
+  getFillCutoffY,
   getRecipeById,
-  measureIrregularity,
   shapePresets,
   type ShapeRecipe
 } from "./lib/shapes";
+import {
+  cubicUnitsToLiters,
+  formatLength,
+  formatVolume,
+  sceneUnitsToCentimeters
+} from "./lib/metrics/units";
 
 const irregularityThreshold = 7.5;
 
@@ -24,9 +31,22 @@ function App() {
     () => (shapeId === "custom" ? customRecipe : getRecipeById(shapeId)),
     [customRecipe, shapeId]
   );
-  const activeIrregularity = useMemo(() => measureIrregularity(activeRecipe), [activeRecipe]);
+  const activeField = useMemo(() => buildIrregularGeometry(activeRecipe), [activeRecipe]);
   const irregularityVerdict =
-    activeIrregularity >= irregularityThreshold ? "Irregular" : "Regularized";
+    activeField.irregularity >= irregularityThreshold ? "Irregular" : "Regularized";
+
+  const waterLine = useMemo(() => getFillCutoffY(activeField, fillPercent), [activeField, fillPercent]);
+  const submerged = useMemo(
+    () => activeField.fillModel.centroidBelow(waterLine),
+    [activeField, waterLine]
+  );
+
+  const capacityLiters = cubicUnitsToLiters(activeField.metrics.volume);
+  const waterVolumeLiters = cubicUnitsToLiters(submerged?.volume ?? 0);
+  const waterLineCm = sceneUnitsToCentimeters(waterLine - activeField.bounds.min.y);
+  const fluidCentreLabel = submerged
+    ? `${formatLength(sceneUnitsToCentimeters(submerged.centroid.y - activeField.bounds.min.y))} above base`
+    : "—";
 
   return (
     <main className="app-shell">
@@ -103,7 +123,7 @@ function App() {
                 <h2>Shape</h2>
                 <div className="status-pill">
                   <strong>{irregularityVerdict}</strong>
-                  <span>{activeIrregularity.toFixed(1)}</span>
+                  <span>{activeField.irregularity.toFixed(1)}</span>
                 </div>
               </div>
 
@@ -220,6 +240,17 @@ function App() {
 
             <section className="control-group">
               <div className="control-group__header">
+                <h2>Measurements</h2>
+                <span className="mini-label">1 unit = 10 cm</span>
+              </div>
+              <StatRow label="Capacity" value={formatVolume(capacityLiters)} />
+              <StatRow label="Water volume" value={formatVolume(waterVolumeLiters)} />
+              <StatRow label="Water line" value={formatLength(waterLineCm)} />
+              <StatRow label="Fluid CoM" value={fluidCentreLabel} />
+            </section>
+
+            <section className="control-group">
+              <div className="control-group__header">
                 <h2>Modes</h2>
                 <span className="mini-label">Preview solver</span>
               </div>
@@ -240,7 +271,7 @@ function App() {
         <section className="model-stage">
           <div className="grid-backdrop" aria-hidden="true" />
           <SceneView
-            recipe={activeRecipe}
+            field={activeField}
             fillPercent={fillPercent}
             tiltX={tiltX}
             tiltY={tiltY}
@@ -286,6 +317,20 @@ type ToggleProps = {
   checked: boolean;
   onChange: () => void;
 };
+
+type StatRowProps = {
+  label: string;
+  value: string;
+};
+
+function StatRow({ label, value }: StatRowProps) {
+  return (
+    <div className="stat-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
 
 function Toggle({ label, checked, onChange }: ToggleProps) {
   return (
