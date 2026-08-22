@@ -70,6 +70,7 @@ export const customRecipeDefaults: ShapeRecipe = {
 };
 
 const baseRadius = 1.22;
+const vesselTessellationDetail = 31;
 const profileSampleCount = 2400;
 
 export function getRecipeById(id: string) {
@@ -77,7 +78,7 @@ export function getRecipeById(id: string) {
 }
 
 export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
-  const geometry = new THREE.IcosahedronGeometry(baseRadius, 5);
+  const geometry = new THREE.IcosahedronGeometry(baseRadius, vesselTessellationDetail);
   const positions = geometry.attributes.position;
   const vertex = new THREE.Vector3();
   const centerOffset = new THREE.Vector3();
@@ -284,7 +285,7 @@ function getShapeScale(recipe: ShapeRecipe) {
   return new THREE.Vector3(1 + recipe.stretch.x, 1 + recipe.stretch.y, 1 + recipe.stretch.z);
 }
 
-function getDirectionalRadius(recipe: ShapeRecipe, direction: THREE.Vector3) {
+export function getDirectionalRadius(recipe: ShapeRecipe, direction: THREE.Vector3) {
   const waveA = Math.sin(direction.x * recipe.ridges + recipe.seed);
   const waveB = Math.cos(direction.y * (recipe.ridges + 1) - recipe.seed * 1.3);
   const waveC = Math.sin(direction.z * (recipe.ridges + 2) + recipe.seed * 0.6);
