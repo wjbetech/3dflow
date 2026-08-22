@@ -459,3 +459,24 @@ input[type="range"] {
   color: #eaf3fb;
   font-variant-numeric: tabular-nums;
 }
+
+.stat-row--warn {
+  border-color: rgba(255, 184, 108, 0.45);
+}
+
+.stat-row--warn strong {
+  color: #ffb86c;
+}
+
+.stat-row--danger {
+  border-color: rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.stat-row--danger strong {
+  color: #ff6b6b;
+}
+
+.stat-row--muted strong {
+  color: var(--text-muted);
+}
