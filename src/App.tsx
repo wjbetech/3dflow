@@ -1,4 +1,5 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import * as THREE from "three";
 import { SceneView } from "./components/SceneView";
 import {
   buildIrregularGeometry,
@@ -14,6 +15,7 @@ import {
   formatVolume,
   sceneUnitsToCentimeters
 } from "./lib/metrics/units";
+import { computeSpillState } from "./lib/metrics/spill";
 
 const irregularityThreshold = 7.5;
 
@@ -40,6 +42,22 @@ function App() {
     () => activeField.fillModel.centroidBelow(waterLine),
     [activeField, waterLine]
   );
+  const tiltQuaternion = useMemo(
+    () =>
+      new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(
+          THREE.MathUtils.degToRad(tiltX),
+          0,
+          THREE.MathUtils.degToRad(-tiltY),
+          "XYZ"
+        )
+      ),
+    [tiltX, tiltY]
+  );
+  const spillState = useMemo(
+    () => computeSpillState(activeField, tiltQuaternion, submerged?.volume ?? 0),
+    [activeField, tiltQuaternion, submerged]
+  );
 
   const capacityLiters = cubicUnitsToLiters(activeField.metrics.volume);
   const waterVolumeLiters = cubicUnitsToLiters(submerged?.volume ?? 0);
@@ -47,6 +65,19 @@ function App() {
   const fluidCentreLabel = submerged
     ? `${formatLength(sceneUnitsToCentimeters(submerged.centroid.y - activeField.bounds.min.y))} above base`
     : "—";
+
+  const headroomTone = spillState
+    ? spillState.spilling
+      ? "danger"
+      : spillState.headroomVolume < 0.05
+        ? "warn"
+        : "ok"
+    : "muted";
+  const headroomLabel = !spillState
+    ? "Sealed vessel"
+    : spillState.spilling
+      ? "Spilling"
+      : formatVolume(cubicUnitsToLiters(spillState.headroomVolume));
 
   return (
     <main className="app-shell">
@@ -184,6 +215,14 @@ function App() {
                     onChange={(value) => updateCustomRecipe(setCustomRecipe, "twist", value)}
                   />
                   <Slider
+                    label="Mouth"
+                    min={0.55}
+                    max={1}
+                    step={0.01}
+                    value={customRecipe.mouth}
+                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "mouth", value)}
+                  />
+                  <Slider
                     label="Stretch X"
                     min={-0.35}
                     max={0.35}
@@ -247,6 +286,7 @@ function App() {
               <StatRow label="Water volume" value={formatVolume(waterVolumeLiters)} />
               <StatRow label="Water line" value={formatLength(waterLineCm)} />
               <StatRow label="Fluid CoM" value={fluidCentreLabel} />
+              <StatRow label="Rim headroom" value={headroomLabel} tone={headroomTone} />
             </section>
 
             <section className="control-group">
@@ -277,6 +317,7 @@ function App() {
             tiltY={tiltY}
             gravityEnabled={gravityEnabled}
             pouringEnabled={pouringEnabled}
+            spilling={spillState?.spilling ?? false}
           />
         </section>
       </section>
@@ -321,11 +362,12 @@ type ToggleProps = {
 type StatRowProps = {
   label: string;
   value: string;
+  tone?: "ok" | "warn" | "danger" | "muted";
 };
 
-function StatRow({ label, value }: StatRowProps) {
+function StatRow({ label, value, tone = "ok" }: StatRowProps) {
   return (
-    <div className="stat-row">
+    <div className={`stat-row stat-row--${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -359,7 +401,7 @@ function SocialLink({ href, label, children }: SocialLinkProps) {
 
 function updateCustomRecipe(
   setRecipe: Dispatch<SetStateAction<ShapeRecipe>>,
-  key: "seed" | "amplitude" | "ridges" | "twist",
+  key: "seed" | "amplitude" | "ridges" | "twist" | "mouth",
   value: number
 ) {
   setRecipe((current) => ({

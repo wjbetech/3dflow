@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { buildIrregularGeometry, getFillCutoffY, shapePresets } from "../shapes";
 import { computeSolidMetrics } from "./solid";
-import { createFillModel } from "./fill";
+import { createFillModel, getFillModelForDirection } from "./fill";
 
 describe("fillModel on analytic primitives", () => {
   it("reproduces the exact fill ramp of a unit cube", () => {
@@ -99,8 +99,11 @@ describe("fillModel on irregular vessels", () => {
       try {
         const metrics = computeSolidMetrics(field.geometry);
         const model = field.fillModel;
+        const uncappedVolume = createFillModel(field.geometry).totalVolume;
 
-        expect(model.totalVolume / metrics.volume).toBeCloseTo(1, 9);
+        expect(uncappedVolume / metrics.volume).toBeCloseTo(1, 9);
+        expect(model.totalVolume).toBeLessThan(uncappedVolume);
+        expect(model.maxHeight).toBeLessThan(field.bounds.max.y + 1e-9);
 
         let previous = -1;
 
@@ -148,6 +151,70 @@ describe("fillModel on irregular vessels", () => {
       } finally {
         field.geometry.dispose();
       }
+    }
+  });
+});
+
+describe("oriented fill models", () => {
+  it("keeps the default direction equivalent to the world up vector", () => {
+    const geometry = new THREE.SphereGeometry(1, 96, 64);
+    const base = createFillModel(geometry);
+    const explicitUp = createFillModel(geometry, { direction: new THREE.Vector3(0, 1, 0) });
+
+    for (const height of [-0.6, -0.2, 0.3]) {
+      expect(explicitUp.volumeBelow(height)).toBe(base.volumeBelow(height));
+    }
+  });
+
+  it("slices a cylinder along a sideways direction with symmetric halves", () => {
+    const geometry = new THREE.CylinderGeometry(1, 1, 2, 64);
+    const sideways = createFillModel(geometry, { direction: new THREE.Vector3(1, 0, 0) });
+
+    expect(sideways.totalVolume).toBeCloseTo(createFillModel(geometry).totalVolume, 9);
+    expect(sideways.volumeBelow(0)).toBeCloseTo(sideways.totalVolume / 2, 6);
+    expect(sideways.volumeBelow(-10)).toBeCloseTo(0, 12);
+    expect(sideways.volumeBelow(10)).toBeCloseTo(sideways.totalVolume, 9);
+  });
+
+  it("caps capacity and queries at the requested ceiling", () => {
+    const geometry = new THREE.CylinderGeometry(1, 1, 2, 64);
+    const capped = createFillModel(geometry, { ceiling: 0 });
+
+    expect(capped.maxHeight).toBeCloseTo(0, 9);
+    expect(capped.totalVolume).toBeCloseTo(createFillModel(geometry).totalVolume / 2, 9);
+    expect(capped.volumeBelow(0.001)).toBeCloseTo(capped.totalVolume, 9);
+    expect(capped.centroidBelow(5)?.centroid.y).toBeCloseTo(-0.5, 6);
+  });
+
+  it("mirrors volumes between opposite directions on irregular vessels", () => {
+    const field = buildIrregularGeometry(shapePresets[1]);
+
+    try {
+      const up = createFillModel(field.geometry, { direction: new THREE.Vector3(0, 1, 0) });
+      const down = createFillModel(field.geometry, { direction: new THREE.Vector3(0, -1, 0) });
+
+      for (const height of [field.bounds.min.y + 0.4, 0.1, field.bounds.max.y - 0.5]) {
+        const mirrored = up.totalVolume - down.volumeBelow(-height);
+
+        expect(up.volumeBelow(height)).toBeCloseTo(mirrored, 7);
+      }
+    } finally {
+      field.geometry.dispose();
+    }
+  });
+
+  it("caches directional models per geometry", () => {
+    const field = buildIrregularGeometry(shapePresets[0]);
+
+    try {
+      const direction = new THREE.Vector3(0.3, 1, -0.2);
+      const first = getFillModelForDirection(field.geometry, direction);
+      const second = getFillModelForDirection(field.geometry, direction);
+
+      expect(second).toBe(first);
+      expect(second.totalVolume).toBeCloseTo(first.totalVolume, 12);
+    } finally {
+      field.geometry.dispose();
     }
   });
 });

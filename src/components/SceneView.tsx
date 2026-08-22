@@ -13,6 +13,7 @@ type SceneViewProps = {
   tiltY: number;
   gravityEnabled: boolean;
   pouringEnabled: boolean;
+  spilling: boolean;
 };
 
 const fluidResolution = 20;
@@ -34,13 +35,29 @@ export function SceneView(props: SceneViewProps) {
   );
 }
 
-function FluidShape({ field, fillPercent, tiltX, tiltY, gravityEnabled, pouringEnabled }: SceneViewProps) {
+function FluidShape({
+  field,
+  fillPercent,
+  tiltX,
+  tiltY,
+  gravityEnabled,
+  pouringEnabled,
+  spilling
+}: SceneViewProps) {
   const fluidState = useMemo(() => createFluidState(field, fillPercent, fluidResolution), [field]);
   const vesselRef = useRef<THREE.Group>(null);
   const targetQuaternion = useRef(new THREE.Quaternion());
   const targetEuler = useRef(new THREE.Euler());
 
-  useEffect(() => () => field.geometry.dispose(), [field]);
+  useEffect(
+    () => () => {
+      field.geometry.dispose();
+      if (field.cappedGeometry !== field.geometry) {
+        field.cappedGeometry.dispose();
+      }
+    },
+    [field]
+  );
   useEffect(() => {
     setFluidFillPercent(fluidState, fillPercent);
   }, [fillPercent, fluidState]);
@@ -91,7 +108,11 @@ function FluidShape({ field, fillPercent, tiltX, tiltY, gravityEnabled, pouringE
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.58, 0]}>
         <ringGeometry args={[1.45, 1.9, 80]} />
-        <meshBasicMaterial color={field.irregularity >= 7.5 ? "#ffb86c" : "#b0bec5"} transparent opacity={0.3} />
+        <meshBasicMaterial
+          color={spilling ? "#ff6b6b" : field.irregularity >= 7.5 ? "#ffb86c" : "#b0bec5"}
+          transparent
+          opacity={0.3}
+        />
       </mesh>
     </group>
   );

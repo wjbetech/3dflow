@@ -6,8 +6,36 @@ import {
   measureIrregularity,
   shapePresets
 } from "./shapes";
+import { computeSolidMetrics } from "./metrics/solid";
 
 const irregularityThreshold = 7.5;
+
+describe("mouth capping", () => {
+  it("builds a watertight capped solid whose capacity matches its integrated volume", () => {
+    for (const recipe of shapePresets) {
+      const field = buildIrregularGeometry(recipe);
+
+      try {
+        expect(field.mouthY).not.toBeNull();
+        expect(field.rimPoints.length).toBeGreaterThanOrEqual(9);
+
+        for (let i = 1; i < field.rimPoints.length; i += 3) {
+          expect(field.rimPoints[i]).toBeCloseTo(field.mouthY as number, 6);
+        }
+
+        const cappedMetrics = computeSolidMetrics(field.cappedGeometry);
+
+        expect(cappedMetrics.volume / field.fillModel.totalVolume).toBeCloseTo(1, 6);
+        expect(cappedMetrics.volume).toBeLessThan(field.metrics.volume);
+      } finally {
+        field.geometry.dispose();
+        if (field.cappedGeometry !== field.geometry) {
+          field.cappedGeometry.dispose();
+        }
+      }
+    }
+  });
+});
 
 describe("shape presets", () => {
   it("falls back to the first preset for unknown ids", () => {

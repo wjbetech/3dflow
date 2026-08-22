@@ -8,6 +8,11 @@ export type FillModel = {
   centroidBelow(height: number): { volume: number; centroid: THREE.Vector3 } | null;
 };
 
+export type CreateFillModelOptions = {
+  direction?: THREE.Vector3;
+  ceiling?: number;
+};
+
 export type SubmergedState = {
   volume: number;
   momentX: number;
@@ -70,8 +75,44 @@ const sliceZ = new Float64Array(6);
 const sliceAngle = new Float64Array(6);
 const sliceOrder = [0, 1, 2, 3, 4, 5];
 const sliceResult = new Float64Array(3);
+let activeBasis: ProjectionBasis | null = null;
 
-export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
+type ProjectionBasis = {
+  ux: number;
+  uy: number;
+  uz: number;
+  ax: number;
+  ay: number;
+  az: number;
+  bx: number;
+  by: number;
+  bz: number;
+};
+
+function buildProjectionBasis(up: THREE.Vector3): ProjectionBasis {
+  const helperX = Math.abs(up.y) < 0.9 ? 0 : 1;
+  const helperY = helperX === 0 ? 1 : 0;
+  const dot = helperX * up.x + helperY * up.y;
+
+  let ax = helperX - dot * up.x;
+  let ay = helperY - dot * up.y;
+  const az = -dot * up.z;
+  const lengthA = Math.hypot(ax, ay, az);
+
+  ax /= lengthA;
+  ay /= lengthA;
+
+  const bx = up.y * az - up.z * ay;
+  const by = up.z * ax - up.x * az;
+  const bz = up.x * ay - up.y * ax;
+
+  return { ux: up.x, uy: up.y, uz: up.z, ax, ay, az, bx, by, bz };
+}
+
+export function createFillModel(
+  geometry: THREE.BufferGeometry,
+  options: CreateFillModelOptions = {}
+): FillModel {
   const positions = geometry.getAttribute("position");
 
   if (!positions || positions.itemSize !== 3) {
@@ -85,6 +126,11 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
     throw new Error("createFillModel requires a triangulated mesh");
   }
 
+  const direction = options.direction ?? new THREE.Vector3(0, 1, 0);
+  const basis = buildProjectionBasis(direction.clone().normalize());
+  const rawCeiling = options.ceiling ?? Number.POSITIVE_INFINITY;
+  activeBasis = basis;
+
   const records = new Float64Array((vertexCount / 3) * recordStride);
   let recordCount = 0;
   let totalVolume = 0;
@@ -92,7 +138,11 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
   let totalMomentY = 0;
   let totalMomentZ = 0;
   let minHeight = Number.POSITIVE_INFINITY;
-  let maxHeight = Number.NEGATIVE_INFINITY;
+  let rawMaxHeight = Number.NEGATIVE_INFINITY;
+
+  const heights = new Float64Array(4);
+  const sliceA = new Float64Array(4);
+  const sliceB = new Float64Array(4);
 
   for (let start = 0; start < vertexCount; start += 3) {
     const ia = index ? index.getX(start) : start;
@@ -119,13 +169,28 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
     const centroidY = (ay + by + cy) / 4;
     const centroidZ = (az + bz + cz) / 4;
 
+    heights[0] = ax * basis.ux + ay * basis.uy + az * basis.uz;
+    heights[1] = bx * basis.ux + by * basis.uy + bz * basis.uz;
+    heights[2] = cx * basis.ux + cy * basis.uy + cz * basis.uz;
+    heights[3] = 0;
+
+    sliceA[0] = ax * basis.ax + ay * basis.ay + az * basis.az;
+    sliceA[1] = bx * basis.ax + by * basis.ay + bz * basis.az;
+    sliceA[2] = cx * basis.ax + cy * basis.ay + cz * basis.az;
+    sliceA[3] = 0;
+
+    sliceB[0] = ax * basis.bx + ay * basis.by + az * basis.bz;
+    sliceB[1] = bx * basis.bx + by * basis.by + bz * basis.bz;
+    sliceB[2] = cx * basis.bx + cy * basis.by + cz * basis.bz;
+    sliceB[3] = 0;
+
     totalVolume += volume;
     totalMomentX += volume * centroidX;
     totalMomentY += volume * centroidY;
     totalMomentZ += volume * centroidZ;
 
     const base = recordCount * recordStride;
-    writeSortedHeights(records, base, ay, by, cy);
+    writeSortedProjections(records, base, heights);
     records[base + 4] = volume;
     records[base + 5] = volume * centroidX;
     records[base + 6] = volume * centroidY;
@@ -136,51 +201,23 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
       const width = records[base + piece + 1] - low;
 
       if (width > 0) {
-        samplePiece(
-          records,
-          base + 8 + piece * pieceBlockStride,
-          low,
-          width,
-          ax,
-          ay,
-          az,
-          bx,
-          by,
-          bz,
-          cx,
-          cy,
-          cz
-        );
+        samplePiece(records, base + 8 + piece * pieceBlockStride, low, width, sliceA, sliceB, heights);
       }
     }
 
     minHeight = Math.min(minHeight, records[base]);
-    maxHeight = Math.max(maxHeight, records[base + 3]);
+    rawMaxHeight = Math.max(rawMaxHeight, records[base + 3]);
 
     recordCount += 1;
   }
 
-  totalVolume = Math.abs(totalVolume);
-
   const state: SubmergedState = { volume: 0, momentX: 0, momentY: 0, momentZ: 0 };
 
-  const evaluate = (height: number) => {
+  const walkRecords = (height: number) => {
     state.volume = 0;
     state.momentX = 0;
     state.momentY = 0;
     state.momentZ = 0;
-
-    if (height <= minHeight) {
-      return state;
-    }
-
-    if (height >= maxHeight) {
-      state.volume = totalVolume;
-      state.momentX = totalMomentX;
-      state.momentY = totalMomentY;
-      state.momentZ = totalMomentZ;
-      return state;
-    }
 
     for (let record = 0; record < recordCount; record += 1) {
       const base = record * recordStride;
@@ -263,8 +300,46 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
     return state;
   };
 
+  const maxHeight = Math.min(rawMaxHeight, rawCeiling);
+  let grandVolume = totalVolume;
+  let grandMomentX = totalMomentX;
+  let grandMomentY = totalMomentY;
+  let grandMomentZ = totalMomentZ;
+
+  if (rawCeiling < rawMaxHeight && maxHeight > minHeight) {
+    walkRecords(maxHeight);
+    grandVolume = Math.abs(state.volume);
+    grandMomentX = state.momentX;
+    grandMomentY = state.momentY;
+    grandMomentZ = state.momentZ;
+  } else {
+    grandVolume = Math.abs(grandVolume);
+  }
+
+  const evaluate = (height: number) => {
+    if (height <= minHeight) {
+      state.volume = 0;
+      state.momentX = 0;
+      state.momentY = 0;
+      state.momentZ = 0;
+      return state;
+    }
+
+    const effective = Math.min(height, maxHeight);
+
+    if (effective >= maxHeight) {
+      state.volume = grandVolume;
+      state.momentX = grandMomentX;
+      state.momentY = grandMomentY;
+      state.momentZ = grandMomentZ;
+      return state;
+    }
+
+    return walkRecords(effective);
+  };
+
   return {
-    totalVolume,
+    totalVolume: grandVolume,
     minHeight,
     maxHeight,
     volumeBelow(height: number) {
@@ -289,25 +364,72 @@ export function createFillModel(geometry: THREE.BufferGeometry): FillModel {
   };
 }
 
-function writeSortedHeights(records: Float64Array, base: number, ay: number, by: number, cy: number) {
-  const heights = [ay, by, cy, 0];
+const directionalCacheLimit = 16;
+const directionalCache = new WeakMap<THREE.BufferGeometry, Map<string, FillModel>>();
 
-  for (let i = 1; i < heights.length; i += 1) {
-    const current = heights[i];
+export function getFillModelForDirection(
+  geometry: THREE.BufferGeometry,
+  direction: THREE.Vector3,
+  ceiling = Number.POSITIVE_INFINITY
+) {
+  const normalized = direction.clone().normalize();
+  const key = [
+    Math.round(normalized.x * 4096),
+    Math.round(normalized.y * 4096),
+    Math.round(normalized.z * 4096),
+    Number.isFinite(ceiling) ? Math.round(ceiling * 4096) : "inf"
+  ].join("|");
+
+  let cachedModels = directionalCache.get(geometry);
+
+  if (!cachedModels) {
+    cachedModels = new Map();
+    directionalCache.set(geometry, cachedModels);
+  }
+
+  const existing = cachedModels.get(key);
+
+  if (existing) {
+    cachedModels.delete(key);
+    cachedModels.set(key, existing);
+    return existing;
+  }
+
+  const model = createFillModel(geometry, { direction: normalized, ceiling });
+
+  while (cachedModels.size >= directionalCacheLimit) {
+    const oldest = cachedModels.keys().next();
+
+    if (oldest.done) {
+      break;
+    }
+
+    cachedModels.delete(oldest.value);
+  }
+
+  cachedModels.set(key, model);
+  return model;
+}
+
+function writeSortedProjections(records: Float64Array, base: number, heights: Float64Array) {
+  const sorted = [heights[0], heights[1], heights[2], heights[3]];
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const current = sorted[i];
     let j = i - 1;
 
-    while (j >= 0 && heights[j] > current) {
-      heights[j + 1] = heights[j];
+    while (j >= 0 && sorted[j] > current) {
+      sorted[j + 1] = sorted[j];
       j -= 1;
     }
 
-    heights[j + 1] = current;
+    sorted[j + 1] = current;
   }
 
-  records[base] = heights[0];
-  records[base + 1] = heights[1];
-  records[base + 2] = heights[2];
-  records[base + 3] = heights[3];
+  records[base] = sorted[0];
+  records[base + 1] = sorted[1];
+  records[base + 2] = sorted[2];
+  records[base + 3] = sorted[3];
 }
 
 function samplePiece(
@@ -315,19 +437,13 @@ function samplePiece(
   slot: number,
   low: number,
   width: number,
-  ax: number,
-  ay: number,
-  az: number,
-  bx: number,
-  by: number,
-  bz: number,
-  cx: number,
-  cy: number,
-  cz: number
+  sliceA: Float64Array,
+  sliceB: Float64Array,
+  heights: Float64Array
 ) {
   for (let nodeIndex = 0; nodeIndex < pieceSampleNodes.length; nodeIndex += 1) {
     const height = low + pieceSampleNodes[nodeIndex] * width;
-    const area = tetSliceArea(ax, ay, az, bx, by, bz, cx, cy, cz, height);
+    const area = tetSliceArea(sliceA, sliceB, heights, height);
 
     records[slot + nodeIndex] = area;
     records[slot + 4 + nodeIndex] = sliceResult[0];
@@ -335,27 +451,16 @@ function samplePiece(
   }
 }
 
-function tetSliceArea(
-  ax: number,
-  ay: number,
-  az: number,
-  bx: number,
-  by: number,
-  bz: number,
-  cx: number,
-  cy: number,
-  cz: number,
-  height: number
-) {
+function tetSliceArea(sliceA: Float64Array, sliceB: Float64Array, heights: Float64Array, height: number) {
   let count = 0;
 
-  count = appendCrossing(count, ax, ay, az, bx, by, bz, height);
-  count = appendCrossing(count, ax, ay, az, cx, cy, cz, height);
-  count = appendCrossing(count, bx, by, bz, cx, cy, cz, height);
+  count = appendCrossing(count, sliceA[0], heights[0], sliceB[0], sliceA[1], heights[1], sliceB[1], height);
+  count = appendCrossing(count, sliceA[0], heights[0], sliceB[0], sliceA[2], heights[2], sliceB[2], height);
+  count = appendCrossing(count, sliceA[1], heights[1], sliceB[1], sliceA[2], heights[2], sliceB[2], height);
 
-  count = appendCrossing(count, ax, ay, az, 0, 0, 0, height);
-  count = appendCrossing(count, bx, by, bz, 0, 0, 0, height);
-  count = appendCrossing(count, cx, cy, cz, 0, 0, 0, height);
+  count = appendCrossing(count, sliceA[0], heights[0], sliceB[0], 0, 0, 0, height);
+  count = appendCrossing(count, sliceA[1], heights[1], sliceB[1], 0, 0, 0, height);
+  count = appendCrossing(count, sliceA[2], heights[2], sliceB[2], 0, 0, 0, height);
 
   if (count < 3) {
     sliceResult[0] = 0;
@@ -406,9 +511,19 @@ function tetSliceArea(
     momentSumZ += (sliceZ[from] + sliceZ[to]) * cross;
   }
 
-  sliceResult[0] = momentSumX / 6;
+  const momentA = momentSumX / 6;
+  const momentB = momentSumZ / 6;
+  const basis = activeBasis;
+
+  if (basis) {
+    sliceResult[0] = basis.ax * momentA + basis.bx * momentB;
+    sliceResult[2] = basis.az * momentA + basis.bz * momentB;
+  } else {
+    sliceResult[0] = momentA;
+    sliceResult[2] = momentB;
+  }
+
   sliceResult[1] = 0;
-  sliceResult[2] = momentSumZ / 6;
 
   return Math.abs(doubledArea) / 2;
 }
