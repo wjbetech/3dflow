@@ -151,3 +151,120 @@ describe("fillModel on irregular vessels", () => {
     }
   });
 });
+
+describe("submerged centroid", () => {
+  it("returns null for an empty submerged region", () => {
+    const model = createFillModel(new THREE.BoxGeometry(1, 1, 1));
+
+    expect(model.centroidBelow(-5)).toBeNull();
+  });
+
+  it("matches closed-form centroids for a unit cube", () => {
+    const model = createFillModel(new THREE.BoxGeometry(1, 1, 1));
+
+    for (const height of [-0.3, 0, 0.22]) {
+      const result = model.centroidBelow(height);
+
+      if (!result) {
+        throw new Error(`expected submerged region at ${height}`);
+      }
+
+      const expectedY = (height - 0.5) / 2;
+
+      expect(result.volume).toBeCloseTo(height + 0.5, 9);
+      expect(result.centroid.x).toBeCloseTo(0, 8);
+      expect(result.centroid.y).toBeCloseTo(expectedY, 8);
+      expect(result.centroid.z).toBeCloseTo(0, 8);
+    }
+
+    expect(model.centroidBelow(10)?.centroid.y).toBeCloseTo(0, 9);
+  });
+
+  it("matches homothetic closed forms across the synthetic tetrahedron knot", () => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute([1, -1, 0, 0, 1, 0, 0, 0, 1], 3)
+    );
+    const model = createFillModel(geometry);
+
+    for (const height of [-0.7, -0.3, -0.05]) {
+      const result = model.centroidBelow(height);
+
+      if (!result) {
+        throw new Error(`expected submerged region at ${height}`);
+      }
+
+      const m = height + 1;
+
+      expect(result.volume / (m ** 3 / 12)).toBeCloseTo(1, 10);
+      expect(result.centroid.x).toBeCloseTo(1 - (5 * m) / 8, 9);
+      expect(result.centroid.y).toBeCloseTo(-1 + (3 * m) / 4, 9);
+      expect(result.centroid.z).toBeCloseTo(m / 4, 9);
+    }
+
+    for (const height of [0.2, 0.55, 0.85]) {
+      const result = model.centroidBelow(height);
+
+      if (!result) {
+        throw new Error(`expected submerged region at ${height}`);
+      }
+
+      const s = 1 - height;
+      const aboveVolume = s ** 3 / 12;
+      const belowVolume = 1 / 6 - aboveVolume;
+      const aboveCentroid = [s / 8, 1 - (3 * s) / 4, s / 4];
+      const totalCentroid = [0.25, 0, 0.25];
+
+      const expected = totalCentroid.map(
+        (component, axis) => (component * (1 / 6) - aboveCentroid[axis] * aboveVolume) / belowVolume
+      );
+
+      expect(result.volume / belowVolume).toBeCloseTo(1, 10);
+      expect(result.centroid.x).toBeCloseTo(expected[0], 9);
+      expect(result.centroid.y).toBeCloseTo(expected[1], 9);
+      expect(result.centroid.z).toBeCloseTo(expected[2], 9);
+    }
+  });
+
+  it("keeps symmetric vessels symmetric and bounds the fluid centroid", () => {
+    const model = createFillModel(new THREE.SphereGeometry(1, 96, 64));
+
+    for (const height of [-0.6, -0.1, 0.4]) {
+      const result = model.centroidBelow(height);
+
+      if (!result) {
+        throw new Error(`expected submerged region at ${height}`);
+      }
+
+      expect(Math.abs(result.centroid.x)).toBeLessThan(1e-6);
+      expect(Math.abs(result.centroid.z)).toBeLessThan(1e-6);
+      expect(result.centroid.y).toBeGreaterThan(-1);
+      expect(result.centroid.y).toBeLessThan(height);
+    }
+  });
+
+  it("produces bounded centroids inside irregular vessels while filling", () => {
+    const field = buildIrregularGeometry(shapePresets[0]);
+
+    try {
+      for (const fillPercent of [10, 40, 70, 95]) {
+        const height = getFillCutoffY(field, fillPercent);
+        const result = field.fillModel.centroidBelow(height);
+
+        if (!result) {
+          throw new Error(`expected submerged region at fill ${fillPercent}`);
+        }
+
+        expect(Math.abs(result.volume / field.fillModel.totalVolume - fillPercent / 100)).toBeLessThan(
+          0.005
+        );
+        expect(result.centroid.length()).toBeLessThan(2);
+        expect(result.centroid.y).toBeGreaterThanOrEqual(field.bounds.min.y - 1e-6);
+        expect(result.centroid.y).toBeLessThanOrEqual(height + 1e-6);
+      }
+    } finally {
+      field.geometry.dispose();
+    }
+  });
+});

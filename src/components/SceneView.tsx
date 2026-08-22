@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { MarchingCubes } from "three/examples/jsm/objects/MarchingCubes.js";
 import { createFluidState, setFluidFillPercent, stepFluidState, type FluidState } from "../lib/fluid";
-import { buildIrregularGeometry, type ShapeField, type ShapeRecipe } from "../lib/shapes";
+import { getFillCutoffY, type ShapeField } from "../lib/shapes";
 
 type SceneViewProps = {
-  recipe: ShapeRecipe;
+  field: ShapeField;
   fillPercent: number;
   tiltX: number;
   tiltY: number;
@@ -34,8 +34,7 @@ export function SceneView(props: SceneViewProps) {
   );
 }
 
-function FluidShape({ recipe, fillPercent, tiltX, tiltY, gravityEnabled, pouringEnabled }: SceneViewProps) {
-  const field = useMemo(() => buildIrregularGeometry(recipe), [recipe]);
+function FluidShape({ field, fillPercent, tiltX, tiltY, gravityEnabled, pouringEnabled }: SceneViewProps) {
   const fluidState = useMemo(() => createFluidState(field, fillPercent, fluidResolution), [field]);
   const vesselRef = useRef<THREE.Group>(null);
   const targetQuaternion = useRef(new THREE.Quaternion());
@@ -79,13 +78,15 @@ function FluidShape({ recipe, fillPercent, tiltX, tiltY, gravityEnabled, pouring
         </mesh>
 
         <ContainedFluid
-          key={`${recipe.id}-${gravityEnabled}-${pouringEnabled}`}
+          key={`${field.recipe.id}-${gravityEnabled}-${pouringEnabled}`}
           field={field}
           state={fluidState}
           gravityEnabled={gravityEnabled}
           pouringEnabled={pouringEnabled}
           vesselRef={vesselRef}
         />
+
+        <FluidCentreMarker field={field} fillPercent={fillPercent} />
       </group>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.58, 0]}>
@@ -93,6 +94,29 @@ function FluidShape({ recipe, fillPercent, tiltX, tiltY, gravityEnabled, pouring
         <meshBasicMaterial color={field.irregularity >= 7.5 ? "#ffb86c" : "#b0bec5"} transparent opacity={0.3} />
       </mesh>
     </group>
+  );
+}
+
+type FluidCentreMarkerProps = {
+  field: ShapeField;
+  fillPercent: number;
+};
+
+function FluidCentreMarker({ field, fillPercent }: FluidCentreMarkerProps) {
+  const centre = useMemo(() => {
+    const height = getFillCutoffY(field, fillPercent);
+    return field.fillModel.centroidBelow(height)?.centroid ?? null;
+  }, [field, fillPercent]);
+
+  if (!centre) {
+    return null;
+  }
+
+  return (
+    <mesh position={centre} renderOrder={3}>
+      <sphereGeometry args={[0.04, 20, 20]} />
+      <meshBasicMaterial color="#ffb86c" depthTest={false} />
+    </mesh>
   );
 }
 
