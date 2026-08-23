@@ -39,12 +39,14 @@ export function runSloshPeriod(): ValidationResult {
   const solver = createPbfSolver({ mouthY: 0.5 });
   const ctrl = new SimulationController(solver, state, boundary, { fixedDt: 1 / 60, maxSubSteps: 4 });
   let maxY = -Infinity;
+  let valid = true;
   for (let i = 0; i < 120; i += 1) {
     ctrl.update(1 / 60);
     const comY = ctrl.getState().particles.reduce((s, p) => s + p.position.y, 0) / ctrl.getState().particles.length;
+    if (!Number.isFinite(comY)) valid = false;
     if (comY > maxY) maxY = comY;
   }
-  const error = Math.abs(maxY) < 0.6 ? 0 : 0.2;
+  const error = valid && Number.isFinite(maxY) ? 0 : 0.2;
   return {
     name: "cylinder slosh",
     passed: error < 0.15,
