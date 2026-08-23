@@ -180,11 +180,26 @@ function App() {
                     <button
                       type="button"
                       className="text-button"
-                      onClick={() => setCustomRecipe(customRecipeDefaults)}
+                      onClick={() =>
+                        setCustomRecipe((current) => ({
+                          ...customRecipeDefaults,
+                          deformations: current.deformations
+                        }))
+                      }
                     >
-                      Reset
+                      Reset sliders
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setCustomRecipe((current) => ({ ...current, deformations: [] }))}
+                    >
+                      Clear sculpting
                     </button>
                   </div>
+                  <p className="group-note">
+                    Drag the teal handles on the vessel to sculpt it. Changes apply on release.
+                  </p>
                   <Slider
                     label="Seed"
                     min={0}
@@ -342,6 +357,25 @@ function App() {
             gravityEnabled={gravityEnabled}
             pouringEnabled={pouringEnabled}
             spilling={spillState?.spilling ?? false}
+            deformations={customRecipe.deformations ?? []}
+            sculptingEnabled={shapeId === "custom"}
+            onCommitDeformation={(index, deformation) => {
+              setCustomRecipe((current) => {
+                const next = [...(current.deformations ?? [])];
+
+                while (next.length <= index) {
+                  next.push({
+                    origin: [0, 0, 0],
+                    displacement: [0, 0, 0],
+                    radius: 0.55
+                  });
+                }
+
+                next[index] = deformation;
+
+                return { ...current, deformations: next };
+              });
+            }}
           />
         </section>
       </section>

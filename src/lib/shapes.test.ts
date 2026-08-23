@@ -1,12 +1,139 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
   buildIrregularGeometry,
+  getDirectionalRadius,
   getFillCutoffY,
   getRecipeById,
   measureIrregularity,
-  shapePresets
+  shapePresets,
+  type ShapeRecipe
 } from "./shapes";
 import { computeSolidMetrics } from "./metrics/solid";
+
+function closestVertexDistance(
+  geometry: THREE.BufferGeometry,
+  target: [number, number, number]
+) {
+  const positions = geometry.getAttribute("position") as THREE.BufferAttribute;
+  let best = Number.POSITIVE_INFINITY;
+  let bestIndex = -1;
+
+  for (let i = 0; i < positions.count; i += 1) {
+    const distance = Math.hypot(
+      positions.getX(i) - target[0],
+      positions.getY(i) - target[1],
+      positions.getZ(i) - target[2]
+    );
+
+    if (distance < best) {
+      best = distance;
+      bestIndex = i;
+    }
+  }
+
+  return { distance: best, index: bestIndex };
+}
+
+function farSculptedHelper(positions: THREE.BufferAttribute, index: number) {  return `${positions.getX(index)}|${positions.getY(index)}|${positions.getZ(index)}`;
+}
+
+describe("surface deformations", () => {
+  const baseRecipe: ShapeRecipe = {
+    ...shapePresets[0],
+    mouth: 1,
+    stretch: { x: 0, y: 0, z: 0 },
+    deformations: []
+  };
+
+  const anchorDirection = new THREE.Vector3(1, -0.44, 0).normalize();
+  const anchorRadius = getDirectionalRadius(baseRecipe, anchorDirection);
+  const deformationOrigin: [number, number, number] = [
+    anchorDirection.x * anchorRadius,
+    anchorDirection.y * anchorRadius,
+    anchorDirection.z * anchorRadius
+  ];
+  const deformationDisplacement: [number, number, number] = [0.35, 0.25, -0.2];
+  const deformationRadius = 0.5;
+
+  const sculptedRecipe: ShapeRecipe = {
+    ...baseRecipe,
+    deformations: [
+      {
+        origin: deformationOrigin,
+        displacement: deformationDisplacement,
+        radius: deformationRadius
+      }
+    ]
+  };
+
+  it("moves the anchor vertex by the full displacement and leaves distant vertices fixed", () => {
+    const base = buildIrregularGeometry({ ...sculptedRecipe, deformations: [] });
+    const sculpted = buildIrregularGeometry(sculptedRecipe);
+    console.log("PROBE centerOffset=", base.centerOffset.toArray(), "scale=", base.scale.toArray());
+
+    try {
+      const near = closestVertexDistance(base.cappedGeometry, deformationOrigin);
+      const basePosition = base.cappedGeometry.getAttribute("position") as THREE.BufferAttribute;
+      const sculptedPosition = sculpted.cappedGeometry.getAttribute(
+        "position"
+      ) as THREE.BufferAttribute;
+
+      expect(near.distance).toBeLessThan(0.06);
+
+      const moved = new THREE.Vector3(
+        sculptedPosition.getX(near.index) - basePosition.getX(near.index),
+        sculptedPosition.getY(near.index) - basePosition.getY(near.index),
+        sculptedPosition.getZ(near.index) - basePosition.getZ(near.index)
+      );
+
+      expect(moved.x).toBeCloseTo(deformationDisplacement[0], 2);
+      expect(moved.y).toBeCloseTo(deformationDisplacement[1], 2);
+      expect(moved.z).toBeCloseTo(deformationDisplacement[2], 2);
+
+      const far = closestVertexDistance(base.cappedGeometry, [0, 1.3, 0]);
+
+      expect(farSculptedHelper(sculptedPosition, far.index)).toBe(
+        farSculptedHelper(basePosition, far.index)
+      );
+    } finally {
+      base.geometry.dispose();
+      base.cappedGeometry.dispose();
+      sculpted.geometry.dispose();
+      sculpted.cappedGeometry.dispose();
+    }
+  });
+
+  it("keeps a strongly sculpted solid watertight and self-consistent", () => {
+    const field = buildIrregularGeometry({
+      ...baseRecipe,
+      deformations: [
+        {
+          origin: deformationOrigin,
+          displacement: deformationDisplacement,
+          radius: deformationRadius
+        },
+        {
+          origin: [-0.7, 0.6, 0.3],
+          displacement: [-0.4, -0.1, 0.25],
+          radius: 0.6
+        }
+      ]
+    });
+
+    try {
+      const cappedMetrics = computeSolidMetrics(field.cappedGeometry);
+
+      expect(cappedMetrics.volume).toBeGreaterThan(0);
+      expect(cappedMetrics.volume / field.fillModel.totalVolume).toBeCloseTo(1, 6);
+    } finally {
+      field.geometry.dispose();
+      if (field.cappedGeometry !== field.geometry) {
+        field.cappedGeometry.dispose();
+      }
+    }
+  });
+});
 
 describe("mouth capping", () => {
   it("builds a watertight capped solid whose capacity matches its integrated volume", () => {
