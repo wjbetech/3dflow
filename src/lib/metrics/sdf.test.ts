@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { buildIrregularGeometry, shapePresets } from "../shapes";
-import { buildVoxelSdf, type VoxelSdf } from "./sdf";
+import { buildVoxelSdf, packSdfToBytes, sdfByteEncodingRange, type VoxelSdf } from "./sdf";
 
 function sampleSpherePoint(radius: number, theta: number, phi: number) {
   return new THREE.Vector3(
@@ -96,6 +96,37 @@ describe("buildVoxelSdf", () => {
         field.cappedGeometry.dispose();
       }
     }
+  });
+
+  it("packs signed distances into bytes with the surface near mid-scale", () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const sdf = buildVoxelSdf(geometry, 32);
+    const bytes = packSdfToBytes(sdf);
+
+    expect(bytes.length).toBe(sdf.field.length);
+    expect(sdfByteEncodingRange).toBeGreaterThan(0);
+
+    let min = 255;
+    let max = 0;
+
+    for (const byte of bytes) {
+      if (byte < min) min = byte;
+      if (byte > max) max = byte;
+    }
+
+    expect(min).toBeLessThan(40);
+    expect(max).toBeGreaterThan(215);
+
+    const centerIndex = (() => {
+      const [nx, ny] = sdf.dims;
+      const i = Math.floor((0 - sdf.minCorner.x) / sdf.cellSize);
+      const j = Math.floor((0 - sdf.minCorner.y) / sdf.cellSize);
+      const k = Math.floor((0 - sdf.minCorner.z) / sdf.cellSize);
+
+      return i + j * nx + k * nx * ny;
+    })();
+
+    expect(bytes[centerIndex]).toBeLessThan(60);
   });
 
   it("never reports inside above the mouth plane", () => {
