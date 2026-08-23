@@ -17,8 +17,6 @@ import {
 } from "./lib/metrics/units";
 import { computeSpillState } from "./lib/metrics/spill";
 
-const irregularityThreshold = 7.5;
-
 function App() {
   const [shapeId, setShapeId] = useState(shapePresets[0].id);
   const [fillPercent, setFillPercent] = useState(56);
@@ -35,8 +33,8 @@ function App() {
     [customRecipe, shapeId]
   );
   const activeField = useMemo(() => buildIrregularGeometry(activeRecipe), [activeRecipe]);
-  const irregularityVerdict =
-    activeField.irregularity >= irregularityThreshold ? "Irregular" : "Regularized";
+  const irregularityReport = activeField.irregularityReport;
+  const irregularityVerdict = irregularityReport.irregular ? "Irregular" : "Regularized";
 
   const waterLine = useMemo(() => getFillCutoffY(activeField, fillPercent), [activeField, fillPercent]);
   const submerged = useMemo(
@@ -153,9 +151,13 @@ function App() {
             <section className="control-group">
               <div className="control-group__header">
                 <h2>Shape</h2>
-                <div className="status-pill">
+                <div className="status-pill" title={irregularityReport.criteria.map((c) => `${c.label}: ${c.score.toFixed(1)}${c.passed ? "" : " (failed)"}`).join(", ")}>
                   <strong>{irregularityVerdict}</strong>
-                  <span>{activeField.irregularity.toFixed(1)}</span>
+                  <span>
+                    {irregularityReport.irregular
+                      ? irregularityReport.failedLabels.join(" · ")
+                      : "all checks passed"}
+                  </span>
                 </div>
               </div>
 

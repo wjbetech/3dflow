@@ -130,7 +130,7 @@ function FluidShape({
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.58, 0]}>
         <ringGeometry args={[1.45, 1.9, 80]} />
         <meshBasicMaterial
-          color={spilling ? "#ff6b6b" : field.irregularity >= 7.5 ? "#ffb86c" : "#b0bec5"}
+          color={spilling ? "#ff6b6b" : field.irregularityReport.irregular ? "#ffb86c" : "#b0bec5"}
           transparent
           opacity={0.3}
         />

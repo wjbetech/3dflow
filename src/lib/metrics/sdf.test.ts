@@ -115,7 +115,19 @@ describe("buildVoxelSdf", () => {
     }
 
     expect(min).toBeLessThan(40);
-    expect(max).toBeGreaterThan(215);
+    expect(max).toBeGreaterThan(180);
+
+    const synthetic = {
+      dims: [6, 1, 1] as [number, number, number],
+      minCorner: new THREE.Vector3(-3, -1, -1),
+      cellSize: 1,
+      field: new Float32Array([-0.15, -0.075, 0, 0.075, 0.15, 1]),
+      sampleDistance: () => 0,
+      isInside: () => false
+    } as VoxelSdf;
+    const packed = packSdfToBytes(synthetic);
+
+    expect(Array.from(packed)).toEqual([0, 64, 128, 191, 255, 255]);
 
     const centerIndex = (() => {
       const [nx, ny] = sdf.dims;

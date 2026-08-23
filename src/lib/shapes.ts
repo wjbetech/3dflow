@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { createFillModel, type FillModel } from "./metrics/fill";
+import { analyzeIrregularity, type IrregularityReport } from "./metrics/irregularity";
 import { computeSolidMetrics, type SolidMetrics } from "./metrics/solid";
 import { buildVoxelSdf, type VoxelSdf } from "./metrics/sdf";
 
@@ -25,6 +26,7 @@ export type ShapeField = {
   cappedGeometry: THREE.BufferGeometry;
   lidVertexStart: number;
   irregularity: number;
+  irregularityReport: IrregularityReport;
   centerOffset: THREE.Vector3;
   bounds: THREE.Box3;
   scale: THREE.Vector3;
@@ -97,9 +99,6 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   const centerOffset = new THREE.Vector3();
   const scale = getShapeScale(recipe);
 
-  let radiusTotal = 0;
-  let radiusSquaredTotal = 0;
-
   for (let index = 0; index < positions.count; index += 1) {
     vertex.fromBufferAttribute(positions, index);
     const direction = vertex.normalize();
@@ -112,10 +111,6 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
     );
 
     positions.setXYZ(index, vertex.x, vertex.y, vertex.z);
-
-    const measuredRadius = vertex.length();
-    radiusTotal += measuredRadius;
-    radiusSquaredTotal += measuredRadius * measuredRadius;
   }
 
   positions.needsUpdate = true;
@@ -125,9 +120,6 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   geometry.computeBoundingBox();
   geometry.computeVertexNormals();
 
-  const meanRadius = radiusTotal / positions.count;
-  const variance = radiusSquaredTotal / positions.count - meanRadius * meanRadius;
-  const irregularity = Math.max(0, Math.sqrt(Math.max(variance, 0)) * 100);
   const bounds = geometry.boundingBox?.clone() ?? new THREE.Box3();
   const metrics = computeSolidMetrics(geometry);
 
@@ -141,13 +133,15 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   const rimPoints = mouthY === null ? [] : collectRimLoop(cappedGeometry, mouthY);
   const fillModel = createFillModel(cappedGeometry);
   const sdf = buildVoxelSdf(cappedGeometry, 52);
+  const irregularityReport = analyzeIrregularity(geometry, sdf, mouthY, bounds);
 
   return {
     recipe,
     geometry,
     cappedGeometry,
     lidVertexStart: capped.lidVertexStart,
-    irregularity,
+    irregularity: irregularityReport.score,
+    irregularityReport,
     centerOffset,
     bounds,
     scale,
