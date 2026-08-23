@@ -8,8 +8,6 @@ import {
 } from "./shapes";
 import { computeSolidMetrics } from "./metrics/solid";
 
-const irregularityThreshold = 7.5;
-
 describe("mouth capping", () => {
   it("builds a watertight capped solid whose capacity matches its integrated volume", () => {
     for (const recipe of shapePresets) {
@@ -70,7 +68,17 @@ describe("shape presets", () => {
 describe("irregularity scoring", () => {
   it("classifies every preset as irregular", () => {
     for (const preset of shapePresets) {
-      expect(measureIrregularity(preset)).toBeGreaterThanOrEqual(irregularityThreshold);
+      const field = buildIrregularGeometry(preset);
+
+      try {
+        expect(field.irregularityReport.irregular).toBe(true);
+        expect(field.irregularityReport.failedLabels.length).toBeGreaterThan(0);
+      } finally {
+        field.geometry.dispose();
+        if (field.cappedGeometry !== field.geometry) {
+          field.cappedGeometry.dispose();
+        }
+      }
     }
   });
 });
