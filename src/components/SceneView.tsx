@@ -12,7 +12,8 @@ import {
 } from "../lib/fluid";
 import { getFillModelForDirection } from "../lib/metrics/fill";
 import { packSdfToBytes, sdfByteEncodingRange } from "../lib/metrics/sdf";
-import { getFillCutoffY, type ShapeField } from "../lib/shapes";
+import { getFillCutoffY, type ShapeField, type SurfaceDeformation } from "../lib/shapes";
+import { VesselHandles } from "./VesselHandles";
 
 type SceneViewProps = {
   field: ShapeField;
@@ -23,6 +24,9 @@ type SceneViewProps = {
   gravityEnabled: boolean;
   pouringEnabled: boolean;
   spilling: boolean;
+  deformations: SurfaceDeformation[];
+  sculptingEnabled: boolean;
+  onCommitDeformation: (index: number, deformation: SurfaceDeformation) => void;
 };
 
 const fluidResolution = 20;
@@ -40,6 +44,8 @@ const vesselGlassMaterialProps = {
 };
 
 export function SceneView(props: SceneViewProps) {
+  const controlsRef = useRef<{ enabled: boolean } | null>(null);
+
   return (
     <Canvas camera={{ position: [3.1, 2.3, 3.6], fov: 42 }} gl={{ alpha: true }}>
       <ambientLight intensity={0.75} />
@@ -47,11 +53,18 @@ export function SceneView(props: SceneViewProps) {
       <directionalLight position={[-3, 2, -4]} intensity={0.45} color="#74c0fc" />
 
       <group rotation={[-0.18, 0.3, 0]}>
-        <FluidShape {...props} />
+        <FluidShape {...props} controlsRef={controlsRef} />
       </group>
 
       <ContactShadows position={[0, -1.55, 0]} opacity={0.42} scale={7} blur={2.4} far={3.2} />
-      <OrbitControls enablePan={false} minDistance={2.2} maxDistance={7} />
+      <OrbitControls
+        enablePan={false}
+        minDistance={2.2}
+        maxDistance={7}
+        ref={(instance) => {
+          controlsRef.current = instance as unknown as { enabled: boolean } | null;
+        }}
+      />
     </Canvas>
   );
 }
@@ -64,8 +77,12 @@ function FluidShape({
   mode,
   gravityEnabled,
   pouringEnabled,
-  spilling
-}: SceneViewProps) {
+  spilling,
+  deformations,
+  sculptingEnabled,
+  onCommitDeformation,
+  controlsRef
+}: SceneViewProps & { controlsRef: { current: { enabled: boolean } | null } }) {
   const fluidState = useMemo(() => createFluidState(field, fillPercent, fluidResolution), [field]);
   const vesselRef = useRef<THREE.Group>(null);
   const targetQuaternion = useRef(new THREE.Quaternion());
@@ -125,6 +142,15 @@ function FluidShape({
         />
 
         <FluidCentreMarker field={field} fillPercent={fillPercent} />
+
+        {sculptingEnabled ? (
+          <VesselHandles
+            field={field}
+            deformations={deformations}
+            controlsRef={controlsRef}
+            onCommit={onCommitDeformation}
+          />
+        ) : null}
       </group>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.58, 0]}>

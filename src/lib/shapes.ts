@@ -18,6 +18,13 @@ export type ShapeRecipe = {
     y: number;
     z: number;
   };
+  deformations?: SurfaceDeformation[];
+};
+
+export type SurfaceDeformation = {
+  origin: [number, number, number];
+  displacement: [number, number, number];
+  radius: number;
 };
 
 export type ShapeField = {
@@ -36,6 +43,61 @@ export type ShapeField = {
   mouthY: number | null;
   rimPoints: number[];
 };
+
+const handleDirections: Array<[number, number, number]> = [
+  [0.62, 0.62, 0.62],
+  [-0.62, 0.62, 0.62],
+  [0.62, -0.62, 0.62],
+  [-0.62, -0.62, 0.62],
+  [0.62, 0.62, -0.62],
+  [-0.62, 0.62, -0.62],
+  [0.62, -0.62, -0.62],
+  [-0.62, -0.62, -0.62],
+  [0, 1, 0],
+  [0, -1, 0]
+];
+
+export const HANDLE_COUNT = handleDirections.length;
+
+function deformationWeight(distanceSquared: number, radius: number) {
+  const t = Math.min(Math.sqrt(Math.max(distanceSquared, 0)) / Math.max(radius, 1e-6), 1);
+
+  return 1 - t * t * (3 - 2 * t);
+}
+
+export function applyDeformations(
+  x: number,
+  y: number,
+  z: number,
+  deformations: SurfaceDeformation[] | undefined
+) {
+  if (!deformations || deformations.length === 0) {
+    return [x, y, z] as const;
+  }
+
+  let dx = 0;
+  let dy = 0;
+  let dz = 0;
+
+  for (const deformation of deformations) {
+    const ox = x - deformation.origin[0];
+    const oy = y - deformation.origin[1];
+    const oz = z - deformation.origin[2];
+    const distanceSquared = ox * ox + oy * oy + oz * oz;
+
+    if (distanceSquared > deformation.radius * deformation.radius) {
+      continue;
+    }
+
+    const weight = deformationWeight(distanceSquared, deformation.radius);
+
+    dx += deformation.displacement[0] * weight;
+    dy += deformation.displacement[1] * weight;
+    dz += deformation.displacement[2] * weight;
+  }
+
+  return [x + dx, y + dy, z + dz] as const;
+}
 
 export const shapePresets: ShapeRecipe[] = [
   {
@@ -82,7 +144,8 @@ export const customRecipeDefaults: ShapeRecipe = {
   ridges: 7,
   twist: 0.04,
   mouth: 0.85,
-  stretch: { x: 0.08, y: 0.02, z: -0.06 }
+  stretch: { x: 0.08, y: 0.02, z: -0.06 },
+  deformations: []
 };
 
 const baseRadius = 1.22;
@@ -117,6 +180,24 @@ export function buildIrregularGeometry(recipe: ShapeRecipe): ShapeField {
   geometry.computeBoundingBox();
   geometry.boundingBox?.getCenter(centerOffset);
   geometry.translate(-centerOffset.x, -centerOffset.y, -centerOffset.z);
+
+  const deformations = recipe.deformations;
+
+  if (deformations && deformations.length > 0) {
+    for (let index = 0; index < positions.count; index += 1) {
+    const [x, y, z] = applyDeformations(
+      positions.getX(index),
+      positions.getY(index),
+      positions.getZ(index),
+      deformations
+    );
+
+    positions.setXYZ(index, x, y, z);
+  }
+
+    positions.needsUpdate = true;
+  }
+
   geometry.computeBoundingBox();
   geometry.computeVertexNormals();
 
