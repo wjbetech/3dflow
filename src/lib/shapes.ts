@@ -295,6 +295,8 @@ function buildCappedGeometry(source: THREE.BufferGeometry, mouthY: number) {
   }
 
   capped.computeVertexNormals();
+  capped.computeBoundingBox();
+  capped.computeBoundingSphere();
 
   return { geometry: capped, lidVertexStart };
 }

@@ -364,7 +364,7 @@ export function createFillModel(
   };
 }
 
-const directionalCacheLimit = 16;
+  const directionalCacheLimit = 8;
 const directionalCache = new WeakMap<THREE.BufferGeometry, Map<string, FillModel>>();
 
 export function getFillModelForDirection(
