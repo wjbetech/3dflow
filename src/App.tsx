@@ -100,7 +100,7 @@ function App() {
     window.addEventListener("keydown", onKeyDown);
 
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [shapeId, recipeHistory]);
+  }, [shapeId, recipeHistory.undo, recipeHistory.redo, recipeHistory]);
 
   return (
     <main className="app-shell">

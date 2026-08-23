@@ -106,6 +106,10 @@ export function VesselHandles({ field, deformations, controlsRef, onCommit }: Ve
         effectiveDeformations
       );
 
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+        continue;
+      }
+
       array[v] = x;
       array[v + 1] = y;
       array[v + 2] = z;
@@ -113,11 +117,20 @@ export function VesselHandles({ field, deformations, controlsRef, onCommit }: Ve
 
     attribute.needsUpdate = true;
     geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    geometry.computeBoundingBox();
   }, [basePositions, effectiveDeformations, field]);
 
   useEffect(() => {
     applyPreview();
   }, [applyPreview]);
+
+  useEffect(
+    () => () => {
+      document.body.style.cursor = "auto";
+    },
+    []
+  );
 
   const beginDrag = (
     index: number,

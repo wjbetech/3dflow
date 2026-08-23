@@ -209,7 +209,7 @@ export function buildVoxelSdf(
   }
 
   const total = nx * ny * nz;
-  const distanceUnits = new Float64Array(total);
+  const distanceUnits = new Float32Array(total);
   const largeDistance = 1e15;
 
   const statusAt = (i: number, j: number, k: number) =>
