@@ -305,3 +305,20 @@ export function buildVoxelSdf(
     }
   };
 }
+
+export const sdfByteEncodingRange = 0.15;
+
+export function packSdfToBytes(sdf: VoxelSdf) {
+  const total = sdf.field.length;
+  const bytes = new Uint8Array(total);
+  const halfRange = sdfByteEncodingRange;
+
+  for (let idx = 0; idx < total; idx += 1) {
+    const normalized = sdf.field[idx] / halfRange;
+    const clamped = normalized < -1 ? -1 : normalized > 1 ? 1 : normalized;
+
+    bytes[idx] = Math.round((clamped * 0.5 + 0.5) * 255);
+  }
+
+  return bytes;
+}

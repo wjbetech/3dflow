@@ -11,6 +11,7 @@ import {
   type FluidState
 } from "../lib/fluid";
 import { getFillModelForDirection } from "../lib/metrics/fill";
+import { packSdfToBytes, sdfByteEncodingRange } from "../lib/metrics/sdf";
 import { getFillCutoffY, type ShapeField } from "../lib/shapes";
 
 type SceneViewProps = {
@@ -191,7 +192,24 @@ function ContainedFluid({
     () => size.clone().divideScalar(fluidResolution - 1).length(),
     [size]
   );
-  const fluidMaterial = useMemo(() => createContainedFluidMaterial(field), [field]);
+  const sdfMap = useMemo(() => {
+    const data = packSdfToBytes(field.sdf);
+    const [nx, ny, nz] = field.sdf.dims;
+    const texture = new THREE.Data3DTexture(data, nx, ny, nz);
+
+    texture.format = THREE.RedFormat;
+    texture.type = THREE.UnsignedByteType;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.unpackAlignment = 1;
+    texture.needsUpdate = true;
+
+    return texture;
+  }, [field]);
+  const fluidMaterial = useMemo(
+    () => createContainedFluidMaterial(field, sdfMap),
+    [field, sdfMap]
+  );
   const surface = useMemo(() => {
     const object = new MarchingCubes(fluidResolution, fluidMaterial, false, false, 60000);
     object.position.copy(center);
@@ -207,8 +225,9 @@ function ContainedFluid({
     () => () => {
       surface.geometry.dispose();
       fluidMaterial.dispose();
+      sdfMap.dispose();
     },
-    [fluidMaterial, surface]
+    [fluidMaterial, sdfMap, surface]
   );
 
   useFrame((_, delta) => {
@@ -304,7 +323,7 @@ function writeDensityToSurface(surface: MarchingCubes, state: FluidState, fieldS
   surface.update();
 }
 
-function createContainedFluidMaterial(field: ShapeField) {
+function createContainedFluidMaterial(field: ShapeField, sdfMap: THREE.Data3DTexture) {
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#58b7ff"),
     emissive: new THREE.Color("#123b5d"),
@@ -319,20 +338,19 @@ function createContainedFluidMaterial(field: ShapeField) {
     side: THREE.DoubleSide
   });
 
-  const centerOffset = field.centerOffset.clone();
-  const scale = field.scale.clone();
-  const recipe = field.recipe;
+  const sdf = field.sdf;
+  const uvScale = new THREE.Vector3(
+    1 / (sdf.dims[0] * sdf.cellSize),
+    1 / (sdf.dims[1] * sdf.cellSize),
+    1 / (sdf.dims[2] * sdf.cellSize)
+  );
 
   material.onBeforeCompile = (shader) => {
     material.userData.shader = shader;
-    shader.uniforms.uShapeCenterOffset = { value: centerOffset };
-    shader.uniforms.uShapeScale = { value: scale };
-    shader.uniforms.uRecipeSeed = { value: recipe.seed };
-    shader.uniforms.uRecipeAmplitude = { value: recipe.amplitude };
-    shader.uniforms.uRecipeRidges = { value: recipe.ridges };
-    shader.uniforms.uRecipeTwist = { value: recipe.twist };
-    shader.uniforms.uContainmentMargin = { value: 0.002 };
-    shader.uniforms.uInverseContainmentMatrix = { value: new THREE.Matrix4() };
+    shader.uniforms.uSdfMap = { value: sdfMap };
+    shader.uniforms.uSdfMinCorner = { value: sdf.minCorner.clone() };
+    shader.uniforms.uSdfUvScale = { value: uvScale };
+    shader.uniforms.uContainmentMargin = { value: 0.012 };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -355,58 +373,29 @@ vContainmentPosition = (uInverseContainmentMatrix * containmentWorldPosition).xy
         "#include <common>",
         `#include <common>
 varying vec3 vContainmentPosition;
-uniform vec3 uShapeCenterOffset;
-uniform vec3 uShapeScale;
-uniform float uRecipeSeed;
-uniform float uRecipeAmplitude;
-uniform float uRecipeRidges;
-uniform float uRecipeTwist;
+uniform highp sampler3D uSdfMap;
+uniform vec3 uSdfMinCorner;
+uniform vec3 uSdfUvScale;
 uniform float uContainmentMargin;
 
-float getContainmentRadius(vec3 direction) {
-  float waveA = sin(direction.x * uRecipeRidges + uRecipeSeed);
-  float waveB = cos(direction.y * (uRecipeRidges + 1.0) - uRecipeSeed * 1.3);
-  float waveC = sin(direction.z * (uRecipeRidges + 2.0) + uRecipeSeed * 0.6);
-  float compound = (waveA + waveB + waveC) / 3.0;
-  float wobble = uRecipeTwist * direction.x * direction.y * direction.z * 8.0;
-  return max(0.65, 1.22 * (1.0 + compound * uRecipeAmplitude + wobble));
+float sampleVesselDistance(vec3 position) {
+  vec3 uvw = (position - uSdfMinCorner) * uSdfUvScale;
+  return (texture(uSdfMap, clamp(uvw, vec3(0.001), vec3(0.999))).r - 0.5) * ${sdfByteEncodingRange};
 }
 `
       )
       .replace(
         "#include <dithering_fragment>",
         `
-vec3 containmentPoint = vContainmentPosition + uShapeCenterOffset;
-vec3 scaledContainmentPoint = containmentPoint / uShapeScale;
-float containmentDistance = length(scaledContainmentPoint);
-
-if (containmentDistance > 0.0001) {
-  vec3 containmentDirection = scaledContainmentPoint / containmentDistance;
-  float containmentRadius = max(0.02, getContainmentRadius(containmentDirection) - uContainmentMargin);
-
-  if (containmentDistance > containmentRadius) {
-    discard;
-  }
+if (sampleVesselDistance(vContainmentPosition) > -uContainmentMargin) {
+  discard;
 }
 
 #include <dithering_fragment>`
       );
   };
 
-  material.customProgramCacheKey = () =>
-    [
-      recipe.seed,
-      recipe.amplitude,
-      recipe.ridges,
-      recipe.twist,
-      scale.x,
-      scale.y,
-      scale.z,
-      centerOffset.x,
-      centerOffset.y,
-      centerOffset.z,
-      "margin:0.002"
-    ].join(":");
+  material.customProgramCacheKey = () => "sdf-containment-v1";
 
   return material;
 }
