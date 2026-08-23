@@ -26,6 +26,8 @@ function App() {
   const [gravityEnabled, setGravityEnabled] = useState(true);
   const [pouringEnabled, setPouringEnabled] = useState(true);
   const [solverMode, setSolverMode] = useState<"static" | "preview" | "dynamic">("static");
+  const [viscosity, setViscosity] = useState(0.01);
+  const [surfaceTension, setSurfaceTension] = useState(0.02);
   const recipeHistory = useHistory<ShapeRecipe>(customRecipeDefaults);
   const customRecipe = recipeHistory.present;
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -408,6 +410,19 @@ function App() {
                   <span>PBF</span>
                 </button>
               </div>
+              {solverMode === "dynamic" && (
+                <>
+                  <Slider label="Viscosity" min={0} max={0.05} step={0.001} value={viscosity} onChange={setViscosity} />
+                  <Slider
+                    label="Surface tension"
+                    min={0}
+                    max={0.1}
+                    step={0.001}
+                    value={surfaceTension}
+                    onChange={setSurfaceTension}
+                  />
+                </>
+              )}
               <Toggle
                 label="Functional gravity"
                 checked={gravityEnabled}
@@ -430,6 +445,8 @@ function App() {
             tiltX={tiltX}
             tiltY={tiltY}
             mode={solverMode}
+            viscosity={viscosity}
+            surfaceTension={surfaceTension}
             gravityEnabled={gravityEnabled}
             pouringEnabled={pouringEnabled}
             spilling={spillState?.spilling ?? false}
