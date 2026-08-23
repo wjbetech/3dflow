@@ -270,7 +270,11 @@ function ContainedFluid({
     const fieldStrength = gravityEnabled ? 110 : 96;
 
     if ("userData" in fluidMaterial && fluidMaterial.userData.shader) {
-      fluidMaterial.userData.shader.uniforms.uInverseContainmentMatrix.value.copy(inverseVesselMatrix.current);
+      const uniforms = fluidMaterial.userData.shader.uniforms;
+
+      if (uniforms.uInverseContainmentMatrix) {
+        uniforms.uInverseContainmentMatrix.value.copy(inverseVesselMatrix.current);
+      }
     }
 
     const localUp = scratchUp
@@ -371,12 +375,13 @@ function createContainedFluidMaterial(field: ShapeField, sdfMap: THREE.Data3DTex
     1 / (sdf.dims[2] * sdf.cellSize)
   );
 
-  material.onBeforeCompile = (shader) => {
-    material.userData.shader = shader;
-    shader.uniforms.uSdfMap = { value: sdfMap };
-    shader.uniforms.uSdfMinCorner = { value: sdf.minCorner.clone() };
-    shader.uniforms.uSdfUvScale = { value: uvScale };
-    shader.uniforms.uContainmentMargin = { value: 0.012 };
+    material.onBeforeCompile = (shader) => {
+      material.userData.shader = shader;
+      shader.uniforms.uSdfMap = { value: sdfMap };
+      shader.uniforms.uSdfMinCorner = { value: sdf.minCorner.clone() };
+      shader.uniforms.uSdfUvScale = { value: uvScale };
+      shader.uniforms.uContainmentMargin = { value: 0.012 };
+      shader.uniforms.uInverseContainmentMatrix = { value: new THREE.Matrix4() };
 
     shader.vertexShader = shader.vertexShader
       .replace(
