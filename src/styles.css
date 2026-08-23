@@ -513,3 +513,8 @@ input[type="range"] {
   background: rgba(114, 223, 214, 0.1);
   color: #eafcf9;
 }
+
+.text-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
