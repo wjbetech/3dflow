@@ -57,6 +57,8 @@ export class PbfSolver implements Solver {
       }
 
       this.deltaP.fill(0);
+      const dq = h * 0.2;
+      const wDq = poly6(dq, h);
       for (let i = 0; i < n; i += 1) {
         const delta = new THREE.Vector3();
         forEachNeighbor(i, this.predicted, h, this.hash, (j) => {
@@ -67,9 +69,8 @@ export class PbfSolver implements Solver {
           const r = Math.hypot(dx, dy, dz);
           scratchVec.set(dx, dy, dz);
           spikyGrad(scratchVec, r, h, gradScratch);
-          const corr = (this.lambdas[i] + this.lambdas[j]) * gradScratch.length() * 0.0001;
-          delta.addScaledVector(gradScratch, (this.lambdas[i] + this.lambdas[j]));
-          void corr;
+          const sCorr = -0.0001 * Math.pow(poly6(r, h) / wDq, 4);
+          delta.addScaledVector(gradScratch, this.lambdas[i] + this.lambdas[j] + sCorr);
         });
         const base = i * 3;
         this.deltaP[base] = delta.x;
@@ -168,7 +169,7 @@ export class PbfSolver implements Solver {
 export function createPbfSolver(overrides: Partial<SimulationConfig> = {}): PbfSolver {
   return new PbfSolver({
     particleRadius: 0.035,
-    restDensity: 1600,
+    restDensity: 2800,
     solverIterations: 4,
     gravity: new THREE.Vector3(0, -9.81, 0),
     timeStep: 1 / 60,
