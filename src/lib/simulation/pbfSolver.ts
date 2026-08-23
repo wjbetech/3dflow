@@ -86,6 +86,9 @@ export class PbfSolver implements Solver {
 
       for (let i = 0; i < n; i += 1) {
         const base = i * 3;
+        const mouthY = this.config.mouthY;
+        const px = this.predicted[base + 1];
+        if (mouthY != null && px > mouthY) continue;
         scratchVec.set(this.predicted[base], this.predicted[base + 1], this.predicted[base + 2]);
         const d = boundary.sampleDistance(scratchVec);
         if (d < -this.config.particleRadius * 0.5) continue;
@@ -128,11 +131,12 @@ export class PbfSolver implements Solver {
 
 export function createPbfSolver(overrides: Partial<SimulationConfig> = {}): PbfSolver {
   return new PbfSolver({
-    particleRadius: 0.05,
-    restDensity: 1800,
-    solverIterations: 3,
+    particleRadius: 0.035,
+    restDensity: 1600,
+    solverIterations: 4,
     gravity: new THREE.Vector3(0, -9.81, 0),
     timeStep: 1 / 60,
+    mouthY: null,
     ...overrides
   });
 }

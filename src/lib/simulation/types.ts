@@ -12,6 +12,7 @@ export type SimulationConfig = {
   solverIterations: number;
   gravity: THREE.Vector3;
   timeStep: number;
+  mouthY?: number | null;
 };
 
 export type SimulationState = {
