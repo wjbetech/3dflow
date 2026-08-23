@@ -92,13 +92,14 @@ export class PbfSolver implements Solver {
         if (mouthY != null && px > mouthY) continue;
         scratchVec.set(this.predicted[base], this.predicted[base + 1], this.predicted[base + 2]);
         const d = boundary.sampleDistance(scratchVec);
-        if (d < -this.config.particleRadius * 0.5) continue;
+        if (d < -this.config.particleRadius) continue;
         if (d < this.config.particleRadius) {
           const g = boundary.sampleGradient(scratchVec, gradScratch);
-          const push = this.config.particleRadius - d;
-          this.predicted[base] += g.x * push;
-          this.predicted[base + 1] += g.y * push;
-          this.predicted[base + 2] += g.z * push;
+          const target = -this.config.particleRadius;
+          const correction = target - d;
+          this.predicted[base] += g.x * correction;
+          this.predicted[base + 1] += g.y * correction;
+          this.predicted[base + 2] += g.z * correction;
         }
       }
       buildSpatialHash(this.predicted, n, h, this.hash);
