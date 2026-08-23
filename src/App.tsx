@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { SceneView } from "./components/SceneView";
 import {
@@ -16,6 +16,7 @@ import {
   sceneUnitsToCentimeters
 } from "./lib/metrics/units";
 import { computeSpillState } from "./lib/metrics/spill";
+import { useHistory } from "./lib/useHistory";
 
 function App() {
   const [shapeId, setShapeId] = useState(shapePresets[0].id);
@@ -25,7 +26,8 @@ function App() {
   const [gravityEnabled, setGravityEnabled] = useState(true);
   const [pouringEnabled, setPouringEnabled] = useState(true);
   const [solverMode, setSolverMode] = useState<"static" | "preview">("static");
-  const [customRecipe, setCustomRecipe] = useState<ShapeRecipe>(customRecipeDefaults);
+  const recipeHistory = useHistory<ShapeRecipe>(customRecipeDefaults);
+  const customRecipe = recipeHistory.present;
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const activeRecipe = useMemo(
@@ -77,6 +79,28 @@ function App() {
     : spillState.spilling
       ? "Spilling"
       : formatVolume(cubicUnitsToLiters(spillState.headroomVolume));
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || shapeId !== "custom") {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        recipeHistory.undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        recipeHistory.redo();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shapeId, recipeHistory]);
 
   return (
     <main className="app-shell">
@@ -181,10 +205,13 @@ function App() {
                       type="button"
                       className="text-button"
                       onClick={() =>
-                        setCustomRecipe((current) => ({
-                          ...customRecipeDefaults,
-                          deformations: current.deformations
-                        }))
+                        recipeHistory.update(
+                          (current) => ({
+                            ...customRecipeDefaults,
+                            deformations: current.deformations
+                          }),
+                          "reset-sliders"
+                        )
                       }
                     >
                       Reset sliders
@@ -192,13 +219,35 @@ function App() {
                     <button
                       type="button"
                       className="text-button"
-                      onClick={() => setCustomRecipe((current) => ({ ...current, deformations: [] }))}
+                      onClick={() =>
+                        recipeHistory.update((current) => ({ ...current, deformations: [] }), "clear-sculpt")
+                      }
                     >
                       Clear sculpting
                     </button>
                   </div>
+                  <div className="inline-actions">
+                    <span className="mini-label">History</span>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={!recipeHistory.canUndo}
+                      onClick={() => recipeHistory.undo()}
+                    >
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      className="text-button"
+                      disabled={!recipeHistory.canRedo}
+                      onClick={() => recipeHistory.redo()}
+                    >
+                      Redo
+                    </button>
+                  </div>
                   <p className="group-note">
-                    Drag the teal handles on the vessel to sculpt it. Changes apply on release.
+                    Drag the teal handles on the vessel to sculpt it. Changes apply on release. Ctrl+Z /
+                    Ctrl+Shift+Z to undo and redo.
                   </p>
                   <Slider
                     label="Seed"
@@ -206,7 +255,9 @@ function App() {
                     max={12}
                     step={0.1}
                     value={customRecipe.seed}
-                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "seed", value)}
+                    onChange={(value) =>
+                      recipeHistory.update((current) => ({ ...current, seed: value }), "slider:seed")
+                    }
                   />
                   <Slider
                     label="Amplitude"
@@ -214,7 +265,9 @@ function App() {
                     max={0.45}
                     step={0.01}
                     value={customRecipe.amplitude}
-                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "amplitude", value)}
+                    onChange={(value) =>
+                      recipeHistory.update((current) => ({ ...current, amplitude: value }), "slider:amplitude")
+                    }
                   />
                   <Slider
                     label="Ridges"
@@ -222,7 +275,9 @@ function App() {
                     max={12}
                     step={1}
                     value={customRecipe.ridges}
-                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "ridges", value)}
+                    onChange={(value) =>
+                      recipeHistory.update((current) => ({ ...current, ridges: value }), "slider:ridges")
+                    }
                   />
                   <Slider
                     label="Twist"
@@ -230,7 +285,9 @@ function App() {
                     max={0.3}
                     step={0.01}
                     value={customRecipe.twist}
-                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "twist", value)}
+                    onChange={(value) =>
+                      recipeHistory.update((current) => ({ ...current, twist: value }), "slider:twist")
+                    }
                   />
                   <Slider
                     label="Mouth"
@@ -238,7 +295,9 @@ function App() {
                     max={1}
                     step={0.01}
                     value={customRecipe.mouth}
-                    onChange={(value) => updateCustomRecipe(setCustomRecipe, "mouth", value)}
+                    onChange={(value) =>
+                      recipeHistory.update((current) => ({ ...current, mouth: value }), "slider:mouth")
+                    }
                   />
                   <Slider
                     label="Stretch X"
@@ -247,10 +306,13 @@ function App() {
                     step={0.01}
                     value={customRecipe.stretch.x}
                     onChange={(value) =>
-                      setCustomRecipe((current) => ({
-                        ...current,
-                        stretch: { ...current.stretch, x: value }
-                      }))
+                      recipeHistory.update(
+                        (current) => ({
+                          ...current,
+                          stretch: { ...current.stretch, x: value }
+                        }),
+                        "slider:stretch-x"
+                      )
                     }
                   />
                   <Slider
@@ -260,10 +322,13 @@ function App() {
                     step={0.01}
                     value={customRecipe.stretch.y}
                     onChange={(value) =>
-                      setCustomRecipe((current) => ({
-                        ...current,
-                        stretch: { ...current.stretch, y: value }
-                      }))
+                      recipeHistory.update(
+                        (current) => ({
+                          ...current,
+                          stretch: { ...current.stretch, y: value }
+                        }),
+                        "slider:stretch-y"
+                      )
                     }
                   />
                   <Slider
@@ -273,10 +338,13 @@ function App() {
                     step={0.01}
                     value={customRecipe.stretch.z}
                     onChange={(value) =>
-                      setCustomRecipe((current) => ({
-                        ...current,
-                        stretch: { ...current.stretch, z: value }
-                      }))
+                      recipeHistory.update(
+                        (current) => ({
+                          ...current,
+                          stretch: { ...current.stretch, z: value }
+                        }),
+                        "slider:stretch-z"
+                      )
                     }
                   />
                 </>
@@ -360,7 +428,7 @@ function App() {
             deformations={customRecipe.deformations ?? []}
             sculptingEnabled={shapeId === "custom"}
             onCommitDeformation={(index, deformation) => {
-              setCustomRecipe((current) => {
+              recipeHistory.update((current) => {
                 const next = [...(current.deformations ?? [])];
 
                 while (next.length <= index) {
@@ -455,17 +523,6 @@ function SocialLink({ href, label, children }: SocialLinkProps) {
       {children}
     </a>
   );
-}
-
-function updateCustomRecipe(
-  setRecipe: Dispatch<SetStateAction<ShapeRecipe>>,
-  key: "seed" | "amplitude" | "ridges" | "twist" | "mouth",
-  value: number
-) {
-  setRecipe((current) => ({
-    ...current,
-    [key]: value
-  }));
 }
 
 export default App;
