@@ -128,6 +128,126 @@ for (let cycle = 0; cycle < cycles; cycle += 1) {
 
 await page.waitForTimeout(1500);
 
+// Switch solver mode and max out fill for visual comparison
+const modeButtons = await page.$$("button.text-button");
+
+for (const button of modeButtons) {
+  const label = await button.textContent();
+
+  if (label?.trim() === "Preview") {
+    await button.click();
+    break;
+  }
+}
+
+await page.waitForTimeout(1000);
+
+if (fillSlider) {
+  await fillSlider.focus();
+  await page.keyboard.press("End");
+}
+
+await page.waitForTimeout(2500);
+await page.screenshot({ path: "probe-out/app-preview-full.png" });
+
+for (const button of await page.$$("button.text-button")) {
+  const label = await button.textContent();
+
+  if (label?.trim() === "Static") {
+    await button.click();
+    break;
+  }
+}
+
+await page.waitForTimeout(2500);
+await page.screenshot({ path: "probe-out/app-static-full.png" });
+
+const debug = await page.evaluate(() => window.__waterDebug?.() ?? null);
+
+console.log("WATER_DEBUG:", JSON.stringify(debug, null, 2));
+
+await page.evaluate(() => window.__waterTune?.(-5));
+await page.evaluate(() => {
+  const mesh = window.__waterMeshRef;
+
+  if (mesh) {
+    mesh.frustumCulled = false;
+  }
+});
+
+await page.waitForTimeout(800);
+await page.screenshot({ path: "probe-out/app-static-nodiscard.png" });
+
+const drawStats = await page.evaluate(async () => {
+  const renderer = window.__glRenderer;
+  const mesh = window.__waterMeshRef;
+
+  const readTriangles = async () => {
+    renderer.info.autoReset = false;
+    renderer.info.reset();
+
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    return renderer.info.render.triangles;
+  };
+
+  const trianglesWithWater = await readTriangles();
+
+  if (mesh) {
+    mesh.visible = false;
+  }
+
+  const trianglesWithoutWater = await readTriangles();
+
+  if (mesh) {
+    mesh.visible = true;
+  }
+
+  const world = mesh ? mesh.matrixWorld : null;
+  void world;
+
+  let worldPosition = null;
+  let parentChain = [];
+
+  if (mesh) {
+    const elements = mesh.matrixWorld.elements;
+
+    worldPosition = [elements[12], elements[13], elements[14]].map((v) => Number(v.toFixed(3)));
+
+    let node = mesh;
+
+    while (node) {
+      parentChain.push(node.type);
+      node = node.parent;
+
+      if (parentChain.length > 8) break;
+    }
+  }
+
+  return {
+    trianglesWithWater,
+    trianglesWithoutWater,
+    delta: trianglesWithWater - trianglesWithoutWater,
+    worldPosition,
+    parentChain,
+    geometryDrawRange: mesh
+      ? {
+          start: mesh.geometry.drawRange.start,
+          count: mesh.geometry.drawRange.count,
+          positionCount: mesh.geometry.getAttribute("position")?.count
+        }
+      : null,
+    boundingSphere: mesh?.geometry.boundingSphere
+      ? {
+          center: mesh.geometry.boundingSphere.center.toArray().map((v) => Number(v.toFixed(3))),
+          radius: Number(mesh.geometry.boundingSphere.radius.toFixed(3))
+        }
+      : null
+  };
+});
+
+console.log("DRAW_STATS:", JSON.stringify(drawStats, null, 2));
+
 const heapAfter = await page.evaluate(() => {
   window.gc?.();
   window.gc?.();

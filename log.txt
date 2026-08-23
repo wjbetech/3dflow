@@ -1,0 +1,250 @@
+verify	Set up job	n++2026-08-23T12:30:28.0803150Z Current runner version: '2.336.0'
+verify	Set up job	2026-08-23T12:30:28.0831780Z ##[group]Runner Image Provisioner
+verify	Set up job	2026-08-23T12:30:28.0832673Z Hosted Compute Agent
+verify	Set up job	2026-08-23T12:30:28.0833275Z Version: 20260729.566
+verify	Set up job	2026-08-23T12:30:28.0834022Z Commit: cf7153fe6e25b664e8693c24944bf2b00355d109
+verify	Set up job	2026-08-23T12:30:28.0834839Z Build Date: 2026-07-29T19:17:02Z
+verify	Set up job	2026-08-23T12:30:28.0835586Z Worker ID: {ee4fed96-6949-4695-9093-e339abe7c8db}
+verify	Set up job	2026-08-23T12:30:28.0836409Z Azure Region: eastus2
+verify	Set up job	2026-08-23T12:30:28.0836992Z ##[endgroup]
+verify	Set up job	2026-08-23T12:30:28.0838422Z ##[group]Operating System
+verify	Set up job	2026-08-23T12:30:28.0839146Z Ubuntu
+verify	Set up job	2026-08-23T12:30:28.0839761Z 24.04.4
+verify	Set up job	2026-08-23T12:30:28.0840641Z LTS
+verify	Set up job	2026-08-23T12:30:28.0841199Z ##[endgroup]
+verify	Set up job	2026-08-23T12:30:28.0841830Z ##[group]Runner Image
+verify	Set up job	2026-08-23T12:30:28.0842507Z Image: ubuntu-24.04
+verify	Set up job	2026-08-23T12:30:28.0843180Z Version: 20260816.277.1
+verify	Set up job	2026-08-23T12:30:28.0844290Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260816.277/images/ubuntu/Ubuntu2404-Readme.md
+verify	Set up job	2026-08-23T12:30:28.0846076Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260816.277
+verify	Set up job	2026-08-23T12:30:28.0847084Z ##[endgroup]
+verify	Set up job	2026-08-23T12:30:28.0848387Z ##[group]GITHUB_TOKEN Permissions
+verify	Set up job	2026-08-23T12:30:28.0850900Z Contents: read
+verify	Set up job	2026-08-23T12:30:28.0851634Z Metadata: read
+verify	Set up job	2026-08-23T12:30:28.0852294Z Packages: read
+verify	Set up job	2026-08-23T12:30:28.0852888Z ##[endgroup]
+verify	Set up job	2026-08-23T12:30:28.0855699Z Secret source: Actions
+verify	Set up job	2026-08-23T12:30:28.0857049Z Prepare workflow directory
+verify	Set up job	2026-08-23T12:30:28.1192782Z Prepare all required actions
+verify	Set up job	2026-08-23T12:30:28.1241422Z Getting action download info
+verify	Set up job	2026-08-23T12:30:28.3312213Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+verify	Set up job	2026-08-23T12:30:28.4468753Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+verify	Set up job	2026-08-23T12:30:28.6450703Z Complete job name: verify
+verify	Run actions/checkout@v4	n++2026-08-23T12:30:28.7199079Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7208624Z ##[group]Run actions/checkout@v4
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7209355Z with:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7209804Z   repository: wjbetech/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7213768Z   token: ***
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7214213Z   ssh-strict: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7214661Z   ssh-user: git
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7215110Z   persist-credentials: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7215604Z   clean: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7216075Z   sparse-checkout-cone-mode: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7216621Z   fetch-depth: 1
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7217057Z   fetch-tags: false
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7217519Z   show-progress: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7217962Z   lfs: false
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7218377Z   submodules: false
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7218890Z   set-safe-directory: true
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7219406Z   allow-unsafe-pr-checkout: false
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.7220232Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8222274Z Syncing repository: wjbetech/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8224186Z ##[group]Getting Git version info
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8225025Z Working directory is '/home/runner/work/3dflow/3dflow'
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8226009Z [command]/usr/bin/git version
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8271938Z git version 2.55.0
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8323977Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8338886Z Temporarily overriding HOME='/home/runner/work/_temp/dc367b68-d9b5-4302-9ae8-56ff1472c2bc' before making global git config changes
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8341220Z Adding repository directory to the temporary git global config as a safe directory
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8344921Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/3dflow/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8394272Z Deleting the contents of '/home/runner/work/3dflow/3dflow'
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8398444Z ##[group]Initializing the repository
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8403305Z [command]/usr/bin/git init /home/runner/work/3dflow/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8513037Z hint: Using 'master' as the name for the initial branch. This default branch name
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8514900Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8516380Z hint: to use in all of your new repositories, which will suppress this warning,
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8517342Z hint: call:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8517990Z hint:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8518800Z hint: 	git config --global init.defaultBranch <name>
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8519660Z hint:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8520584Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8521590Z hint: 'development'. The just-created branch can be renamed via this command:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8522374Z hint:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8522855Z hint: 	git branch -m <name>
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8523389Z hint:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8524066Z hint: Disable this message with "git config set advice.defaultBranchName false"
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8525348Z Initialized empty Git repository in /home/runner/work/3dflow/3dflow/.git/
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8527588Z [command]/usr/bin/git remote add origin https://github.com/wjbetech/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8571315Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8572145Z ##[group]Disabling automatic garbage collection
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8575115Z [command]/usr/bin/git config --local gc.auto 0
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8606891Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8607685Z ##[group]Setting up auth
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8614508Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8647840Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.8993710Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9027324Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9263244Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9297220Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9534515Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9572410Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9573652Z ##[group]Fetching the repository
+verify	Run actions/checkout@v4	2026-08-23T12:30:28.9583211Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +fcd41ba99907a0723e4d2f8af99174da364cb24d:refs/remotes/pull/16/merge
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2445721Z From https://github.com/wjbetech/3dflow
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2446989Z  * [new ref]         fcd41ba99907a0723e4d2f8af99174da364cb24d -> pull/16/merge
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2449420Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2450532Z ##[group]Determining the checkout info
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2452173Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2458132Z [command]/usr/bin/git sparse-checkout disable
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2508583Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2547875Z ##[group]Checking out the ref
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2551815Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/16/merge
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2635670Z Note: switching to 'refs/remotes/pull/16/merge'.
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2636639Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2637141Z You are in 'detached HEAD' state. You can look around, make experimental
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2638136Z changes and commit them, and you can discard any commits you make in this
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2639188Z state without impacting any branches by switching back to a branch.
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2639843Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2640499Z If you want to create a new branch to retain commits you create, you may
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2642182Z do so (now or later) by using -c with the switch command. Example:
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2643096Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2643509Z   git switch -c <new-branch-name>
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2644143Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2644544Z Or undo this operation with:
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2645101Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2645435Z   git switch -
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2645891Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2646596Z Turn off this advice by setting config variable advice.detachedHead to false
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2647724Z 
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2648871Z HEAD is now at fcd41ba Merge 41f22b924270db2cf6ce5acab0e5f7eea3d6c2d4 into 2988ef3303fdef01bcfa1d58c46ad4314bfedc97
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2652851Z ##[endgroup]
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2694220Z [command]/usr/bin/git log -1 --format=%H
+verify	Run actions/checkout@v4	2026-08-23T12:30:29.2719511Z fcd41ba99907a0723e4d2f8af99174da364cb24d
+verify	Run actions/setup-node@v4	n++2026-08-23T12:30:29.3110685Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3115549Z ##[group]Run actions/setup-node@v4
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3116198Z with:
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3116668Z   node-version: 22
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3117166Z   cache: npm
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3117790Z   always-auth: false
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3118293Z   check-latest: false
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3122780Z   token: ***
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.3123283Z ##[endgroup]
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.4643259Z Found in cache @ /opt/hostedtoolcache/node/22.23.2/x64
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.4649314Z (node:2225) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.4651177Z (Use `node --trace-deprecation ...` to show where the warning was created)
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.4655274Z ##[group]Environment details
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.8244593Z node: v22.23.2
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.8246035Z npm: 10.9.8
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.8247028Z yarn: 1.22.22
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.8249275Z ##[endgroup]
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.8265536Z [command]/opt/hostedtoolcache/node/22.23.2/x64/bin/npm config get cache
+verify	Run actions/setup-node@v4	2026-08-23T12:30:29.9603895Z /home/runner/.npm
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.0589640Z Cache hit for: node-cache-Linux-x64-npm-0910a134c82d6cfedd8c821fefec155eb21b9258ff535880b431dc40d2c455b4
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.0689913Z (node:2225) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.4523432Z Received 66496777 of 66496777 (100.0%), 184.9 MBs/sec
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.4527396Z Cache Size: ~63 MB (66496777 B)
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.4552097Z [command]/usr/bin/tar -xf /home/runner/work/_temp/2bf68a51-3cc3-4987-8c00-1d0f29d6f9bf/cache.tzst -P -C /home/runner/work/3dflow/3dflow --use-compress-program unzstd
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.6013126Z Cache restored successfully
+verify	Run actions/setup-node@v4	2026-08-23T12:30:30.6051002Z Cache restored from key: node-cache-Linux-x64-npm-0910a134c82d6cfedd8c821fefec155eb21b9258ff535880b431dc40d2c455b4
+verify	Install dependencies	n++2026-08-23T12:30:30.6336900Z ##[group]Run npm ci
+verify	Install dependencies	2026-08-23T12:30:30.6338107Z [36;1mnpm ci[0m
+verify	Install dependencies	2026-08-23T12:30:30.6392228Z shell: /usr/bin/bash -e {0}
+verify	Install dependencies	2026-08-23T12:30:30.6393446Z ##[endgroup]
+verify	Install dependencies	2026-08-23T12:30:33.6466207Z npm warn deprecated three-mesh-bvh@0.7.8: Deprecated due to three.js version incompatibility. Please use v0.8.0, instead.
+verify	Install dependencies	2026-08-23T12:30:34.8818609Z 
+verify	Install dependencies	2026-08-23T12:30:34.8819703Z added 256 packages, and audited 257 packages in 4s
+verify	Install dependencies	2026-08-23T12:30:34.8820491Z 
+verify	Install dependencies	2026-08-23T12:30:34.8831992Z 53 packages are looking for funding
+verify	Install dependencies	2026-08-23T12:30:34.8832763Z   run `npm fund` for details
+verify	Install dependencies	2026-08-23T12:30:34.9028797Z 
+verify	Install dependencies	2026-08-23T12:30:34.9052012Z 5 vulnerabilities (1 low, 4 high)
+verify	Install dependencies	2026-08-23T12:30:34.9052480Z 
+verify	Install dependencies	2026-08-23T12:30:34.9052784Z To address all issues, run:
+verify	Install dependencies	2026-08-23T12:30:34.9071328Z   npm audit fix
+verify	Install dependencies	2026-08-23T12:30:34.9072304Z 
+verify	Install dependencies	2026-08-23T12:30:34.9072755Z Run `npm audit` for details.
+verify	Typecheck	n++2026-08-23T12:30:34.9786863Z ##[group]Run npm run typecheck
+verify	Typecheck	2026-08-23T12:30:34.9787374Z [36;1mnpm run typecheck[0m
+verify	Typecheck	2026-08-23T12:30:34.9842800Z shell: /usr/bin/bash -e {0}
+verify	Typecheck	2026-08-23T12:30:34.9843237Z ##[endgroup]
+verify	Typecheck	2026-08-23T12:30:35.0896551Z 
+verify	Typecheck	2026-08-23T12:30:35.0897581Z > 3dflow@0.1.0 typecheck
+verify	Typecheck	2026-08-23T12:30:35.0898328Z > tsc -b
+verify	Typecheck	2026-08-23T12:30:35.0898566Z 
+verify	Lint	n++2026-08-23T12:30:38.5033992Z ##[group]Run npm run lint
+verify	Lint	2026-08-23T12:30:38.5034320Z [36;1mnpm run lint[0m
+verify	Lint	2026-08-23T12:30:38.5074541Z shell: /usr/bin/bash -e {0}
+verify	Lint	2026-08-23T12:30:38.5074813Z ##[endgroup]
+verify	Lint	2026-08-23T12:30:38.6074032Z 
+verify	Lint	2026-08-23T12:30:38.6074831Z > 3dflow@0.1.0 lint
+verify	Lint	2026-08-23T12:30:38.6075301Z > eslint .
+verify	Lint	2026-08-23T12:30:38.6075492Z 
+verify	Lint	2026-08-23T12:30:41.7196571Z 
+verify	Lint	2026-08-23T12:30:41.7200673Z /home/runner/work/3dflow/3dflow/src/components/SceneView.tsx
+verify	Lint	2026-08-23T12:30:41.7257791Z ##[warning]   94:91  warning  React Hook useMemo has a missing dependency: 'fillPercent'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+verify	Lint	2026-08-23T12:30:41.7267853Z   325:12  error    Error: Cannot modify local variables after render completes
+verify	Lint	2026-08-23T12:30:41.7268213Z 
+verify	Lint	2026-08-23T12:30:41.7268957Z This argument is a function which may reassign or mutate `waterMesh` after render, which can cause inconsistent behavior on subsequent renders. Consider using state instead.
+verify	Lint	2026-08-23T12:30:41.7269596Z 
+verify	Lint	2026-08-23T12:30:41.7269920Z /home/runner/work/3dflow/3dflow/src/components/SceneView.tsx:325:12
+verify	Lint	2026-08-23T12:30:41.7270752Z   323 |   }, [fluidMaterial, marchingCubesVisible, waterMesh, field.sdf]);
+verify	Lint	2026-08-23T12:30:41.7271209Z   324 |
+verify	Lint	2026-08-23T12:30:41.7271499Z > 325 |   useFrame((_, delta) => {
+verify	Lint	2026-08-23T12:30:41.7271801Z       |            ^^^^^^^^^^^^^^^
+verify	Lint	2026-08-23T12:30:41.7272138Z > 326 |     if (!vesselRef.current) {
+verify	Lint	2026-08-23T12:30:41.7272478Z       | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+verify	Lint	2026-08-23T12:30:41.7272749Z > 327 |       return;
+verify	Lint	2026-08-23T12:30:41.7273210Z       GÇª
+verify	Lint	2026-08-23T12:30:41.7273452Z       | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+verify	Lint	2026-08-23T12:30:41.7273780Z > 459 |     surface.update();
+verify	Lint	2026-08-23T12:30:41.7274073Z       | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+verify	Lint	2026-08-23T12:30:41.7274340Z > 460 |   });
+verify	Lint	2026-08-23T12:30:41.7274741Z       | ^^^^ This function may (indirectly) reassign or modify `waterMesh` after render
+verify	Lint	2026-08-23T12:30:41.7275218Z   461 |
+verify	Lint	2026-08-23T12:30:41.7275440Z   462 |   return (
+verify	Lint	2026-08-23T12:30:41.7275667Z   463 |     <>
+verify	Lint	2026-08-23T12:30:41.7275793Z 
+verify	Lint	2026-08-23T12:30:41.7276077Z /home/runner/work/3dflow/3dflow/src/components/SceneView.tsx:411:9
+verify	Lint	2026-08-23T12:30:41.7276548Z   409 |         const previous = waterMesh.geometry;
+verify	Lint	2026-08-23T12:30:41.7276961Z   410 |         // eslint-disable-next-line react-hooks/refs
+verify	Lint	2026-08-23T12:30:41.7277579Z > 411 |         waterMesh.geometry = buildWaterBody(field.cappedGeometry, localUp, runtime.offset);
+verify	Lint	2026-08-23T12:30:41.7278493Z       |         ^^^^^^^^^ This modifies `waterMesh`
+verify	Lint	2026-08-23T12:30:41.7278840Z   412 |         previous.dispose();
+verify	Lint	2026-08-23T12:30:41.7279114Z   413 |
+verify	Lint	2026-08-23T12:30:41.7279428Z   414 |         built.dirX = localUp.x;  react-hooks/immutability
+verify	Lint	2026-08-23T12:30:41.7280308Z   410:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/refs')
+verify	Lint	2026-08-23T12:30:41.7281020Z   411:9   error    Error: This value cannot be modified
+verify	Lint	2026-08-23T12:30:41.7281529Z 
+verify	Lint	2026-08-23T12:30:41.7282095Z Modifying a value previously passed as an argument to a hook is not allowed. Consider moving the modification before calling the hook.
+verify	Lint	2026-08-23T12:30:41.7282598Z 
+verify	Lint	2026-08-23T12:30:41.7282873Z /home/runner/work/3dflow/3dflow/src/components/SceneView.tsx:411:9
+verify	Lint	2026-08-23T12:30:41.7283330Z   409 |         const previous = waterMesh.geometry;
+verify	Lint	2026-08-23T12:30:41.7283741Z   410 |         // eslint-disable-next-line react-hooks/refs
+verify	Lint	2026-08-23T12:30:41.7284375Z > 411 |         waterMesh.geometry = buildWaterBody(field.cappedGeometry, localUp, runtime.offset);
+verify	Lint	2026-08-23T12:30:41.7284924Z       |         ^^^^^^^^^ `waterMesh` cannot be modified
+verify	Lint	2026-08-23T12:30:41.7285279Z   412 |         previous.dispose();
+verify	Lint	2026-08-23T12:30:41.7285549Z   413 |
+verify	Lint	2026-08-23T12:30:41.7286936Z   414 |         built.dirX = localUp.x;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/immutability
+verify	Lint	2026-08-23T12:30:41.7287977Z 
+verify	Lint	2026-08-23T12:30:41.7288224Z G£û 4 problems (2 errors, 2 warnings)
+verify	Lint	2026-08-23T12:30:41.7288686Z   0 errors and 1 warning potentially fixable with the `--fix` option.
+verify	Lint	2026-08-23T12:30:41.7288986Z 
+verify	Lint	2026-08-23T12:30:41.8741239Z ##[error]Process completed with exit code 1.
+verify	Post Run actions/checkout@v4	n++2026-08-23T12:30:41.8890537Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.8891790Z Post job cleanup.
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9744766Z [command]/usr/bin/git version
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9783966Z git version 2.55.0
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9820568Z Temporarily overriding HOME='/home/runner/work/_temp/ed304d7c-d137-457b-86c6-f818d77dc600' before making global git config changes
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9821485Z Adding repository directory to the temporary git global config as a safe directory
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9825951Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/3dflow/3dflow
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9867086Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:41.9903016Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0148952Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0177417Z http.https://github.com/.extraheader
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0188471Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0222800Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0466604Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+verify	Post Run actions/checkout@v4	2026-08-23T12:30:42.0523465Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+verify	Complete job	n++2026-08-23T12:30:42.0892714Z Cleaning up orphan processes
+verify	Complete job	2026-08-23T12:30:42.1171233Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+

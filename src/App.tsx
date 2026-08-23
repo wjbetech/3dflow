@@ -425,6 +425,7 @@ function App() {
             gravityEnabled={gravityEnabled}
             pouringEnabled={pouringEnabled}
             spilling={spillState?.spilling ?? false}
+            maxContainedUnits={spillState?.maxContainedVolume ?? null}
             deformations={customRecipe.deformations ?? []}
             sculptingEnabled={shapeId === "custom"}
             onCommitDeformation={(index, deformation) => {
