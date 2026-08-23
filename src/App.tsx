@@ -25,7 +25,7 @@ function App() {
   const [tiltY, setTiltY] = useState(-9);
   const [gravityEnabled, setGravityEnabled] = useState(true);
   const [pouringEnabled, setPouringEnabled] = useState(true);
-  const [solverMode, setSolverMode] = useState<"static" | "preview">("static");
+  const [solverMode, setSolverMode] = useState<"static" | "preview" | "dynamic">("static");
   const recipeHistory = useHistory<ShapeRecipe>(customRecipeDefaults);
   const customRecipe = recipeHistory.present;
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -398,6 +398,14 @@ function App() {
                 >
                   Preview
                   <span>approximate</span>
+                </button>
+                <button
+                  type="button"
+                  className={solverMode === "dynamic" ? "segmented-button active" : "segmented-button"}
+                  onClick={() => setSolverMode("dynamic")}
+                >
+                  Dynamic
+                  <span>PBF</span>
                 </button>
               </div>
               <Toggle

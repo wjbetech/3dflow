@@ -70,7 +70,6 @@ describe("surface deformations", () => {
   it("moves the anchor vertex by the full displacement and leaves distant vertices fixed", () => {
     const base = buildIrregularGeometry({ ...sculptedRecipe, deformations: [] });
     const sculpted = buildIrregularGeometry(sculptedRecipe);
-    console.log("PROBE centerOffset=", base.centerOffset.toArray(), "scale=", base.scale.toArray());
 
     try {
       const near = closestVertexDistance(base.cappedGeometry, deformationOrigin);

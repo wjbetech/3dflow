@@ -13,6 +13,7 @@ import { getFillModelForDirection } from "../lib/metrics/fill";
 import { packSdfToBytes, sdfByteEncodingRange } from "../lib/metrics/sdf";
 import { buildWaterBody } from "../lib/metrics/waterMesh";
 import { getFillCutoffY, type ShapeField, type SurfaceDeformation } from "../lib/shapes";
+import { ParticleFluid } from "./ParticleFluid";
 import { VesselHandles } from "./VesselHandles";
 
 type SceneViewProps = {
@@ -20,7 +21,7 @@ type SceneViewProps = {
   fillPercent: number;
   tiltX: number;
   tiltY: number;
-  mode: "static" | "preview";
+  mode: "static" | "preview" | "dynamic";
   gravityEnabled: boolean;
   pouringEnabled: boolean;
   spilling: boolean;
@@ -138,17 +139,21 @@ function FluidShape({
           )}
         </mesh>
 
-        <ContainedFluid
-          key={`${field.recipe.id}-${mode}-${gravityEnabled}-${pouringEnabled}`}
-          field={field}
-          state={fluidState}
-          fillPercent={fillPercent}
-          mode={mode}
-          gravityEnabled={gravityEnabled}
-          pouringEnabled={pouringEnabled}
-          maxContainedUnits={maxContainedUnits}
-          vesselRef={vesselRef}
-        />
+        {mode === "dynamic" ? (
+          <ParticleFluid field={field} fillPercent={fillPercent} tiltX={tiltX} tiltY={tiltY} />
+        ) : (
+          <ContainedFluid
+            key={`${field.recipe.id}-${mode}-${gravityEnabled}-${pouringEnabled}`}
+            field={field}
+            state={fluidState}
+            fillPercent={fillPercent}
+            mode={mode as "static" | "preview"}
+            gravityEnabled={gravityEnabled}
+            pouringEnabled={pouringEnabled}
+            maxContainedUnits={maxContainedUnits}
+            vesselRef={vesselRef}
+          />
+        )}
 
         <FluidCentreMarker field={field} fillPercent={fillPercent} />
 
