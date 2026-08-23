@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+/* eslint-disable react-hooks/immutability */
 import { createSdfBoundary } from "../lib/simulation/boundary";
 import { SimulationController } from "../lib/simulation/controller";
 import { createPbfSolver } from "../lib/simulation/pbfSolver";
@@ -21,8 +22,8 @@ export function ParticleFluid({ field, fillPercent, tiltX, tiltY }: Props) {
 
   const { controller, positions } = useMemo(() => {
     const boundary = createSdfBoundary(field.sdf);
-    const state = seedParticlesInBoundary(count, boundary, field.bounds, 0.045);
-    const solver = createPbfSolver({ particleRadius: 0.045 });
+    const state = seedParticlesInBoundary(count, boundary, field.bounds, 0.035);
+    const solver = createPbfSolver({ particleRadius: 0.035, mouthY: field.mouthY });
     const ctrl = new SimulationController(solver, state, boundary, { fixedDt: 1 / 60, maxSubSteps: 4 });
     const buf = new Float32Array(count * 3);
     return { controller: ctrl, positions: buf };
@@ -31,6 +32,7 @@ export function ParticleFluid({ field, fillPercent, tiltX, tiltY }: Props) {
   useEffect(() => {
     const boundary = createSdfBoundary(field.sdf);
     controller.setBoundary(boundary);
+    (controller as unknown as { solver: { config: { mouthY: number | null } } }).solver.config.mouthY = field.mouthY;
   }, [field, controller]);
 
   useFrame((_, delta) => {
@@ -56,7 +58,7 @@ export function ParticleFluid({ field, fillPercent, tiltX, tiltY }: Props) {
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-      <sphereGeometry args={[0.045, 8, 8]} />
+      <sphereGeometry args={[0.035, 8, 8]} />
       <meshPhysicalMaterial color="#58b7ff" roughness={0.2} transparent opacity={0.9} />
     </instancedMesh>
   );
