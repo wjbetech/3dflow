@@ -8,3 +8,4 @@ vite.config.js
 vite.config.d.ts
 pnpm-lock.yaml
 pnpm-workspace.yaml
+probe-out
