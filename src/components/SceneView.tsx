@@ -1,17 +1,17 @@
 import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { MarchingCubes } from "three/examples/jsm/objects/MarchingCubes.js";
 import {
   createFluidState,
   setFluidFillPercent,
-  setStaticSurface,
   stepFluidState,
   type FluidState
 } from "../lib/fluid";
 import { getFillModelForDirection } from "../lib/metrics/fill";
 import { packSdfToBytes, sdfByteEncodingRange } from "../lib/metrics/sdf";
+import { buildWaterBody } from "../lib/metrics/waterMesh";
 import { getFillCutoffY, type ShapeField, type SurfaceDeformation } from "../lib/shapes";
 import { VesselHandles } from "./VesselHandles";
 
@@ -24,6 +24,7 @@ type SceneViewProps = {
   gravityEnabled: boolean;
   pouringEnabled: boolean;
   spilling: boolean;
+  maxContainedUnits: number | null;
   deformations: SurfaceDeformation[];
   sculptingEnabled: boolean;
   onCommitDeformation: (index: number, deformation: SurfaceDeformation) => void;
@@ -47,7 +48,13 @@ export function SceneView(props: SceneViewProps) {
   const controlsRef = useRef<{ enabled: boolean } | null>(null);
 
   return (
-    <Canvas camera={{ position: [3.1, 2.3, 3.6], fov: 42 }} gl={{ alpha: true }}>
+    <Canvas
+      camera={{ position: [3.1, 2.3, 3.6], fov: 42 }}
+      gl={{ alpha: true }}
+      onCreated={(state) => {
+        (window as unknown as Record<string, unknown>).__glRenderer = state.gl;
+      }}
+    >
       <ambientLight intensity={0.75} />
       <directionalLight position={[4, 5, 3]} intensity={1.6} castShadow />
       <directionalLight position={[-3, 2, -4]} intensity={0.45} color="#74c0fc" />
@@ -78,6 +85,7 @@ function FluidShape({
   gravityEnabled,
   pouringEnabled,
   spilling,
+  maxContainedUnits,
   deformations,
   sculptingEnabled,
   onCommitDeformation,
@@ -138,6 +146,7 @@ function FluidShape({
           mode={mode}
           gravityEnabled={gravityEnabled}
           pouringEnabled={pouringEnabled}
+          maxContainedUnits={maxContainedUnits}
           vesselRef={vesselRef}
         />
 
@@ -195,6 +204,7 @@ type ContainedFluidProps = {
   mode: "static" | "preview";
   gravityEnabled: boolean;
   pouringEnabled: boolean;
+  maxContainedUnits: number | null;
   vesselRef: React.RefObject<THREE.Group | null>;
 };
 
@@ -205,19 +215,30 @@ function ContainedFluid({
   mode,
   gravityEnabled,
   pouringEnabled,
+  maxContainedUnits,
   vesselRef
 }: ContainedFluidProps) {
+  const [marchingCubesVisible, setMarchingCubesVisible] = useState(mode === "preview");
   const vesselWorldQuaternion = useRef(new THREE.Quaternion());
   const inverseWorldQuaternion = useRef(new THREE.Quaternion());
   const inverseVesselMatrix = useRef(new THREE.Matrix4());
   const localGravity = useRef(new THREE.Vector3());
   const previousQuaternion = useRef(new THREE.Quaternion());
+  const waterRuntime = useRef({
+    offset: 0,
+    initialized: false,
+    fieldGeometry: null as THREE.BufferGeometry | null
+  });
+  const builtWaterState = useRef({
+    dirX: 0,
+    dirY: 1,
+    dirZ: 0,
+    offset: 0,
+    has: false,
+    fieldGeometry: null as THREE.BufferGeometry | null
+  });
   const size = useMemo(() => field.bounds.getSize(new THREE.Vector3()), [field]);
   const center = useMemo(() => field.bounds.getCenter(new THREE.Vector3()), [field]);
-  const cellSize = useMemo(
-    () => size.clone().divideScalar(fluidResolution - 1).length(),
-    [size]
-  );
   const sdfMap = useMemo(() => {
     const data = packSdfToBytes(field.sdf);
     const [nx, ny, nz] = field.sdf.dims;
@@ -232,6 +253,7 @@ function ContainedFluid({
 
     return texture;
   }, [field]);
+
   const fluidMaterial = useMemo(
     () => createContainedFluidMaterial(field, sdfMap),
     [field, sdfMap]
@@ -246,6 +268,15 @@ function ContainedFluid({
     object.renderOrder = 1;
     return object;
   }, [center, fluidMaterial, size]);
+  const waterMesh = useMemo(() => {
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), fluidMaterial);
+
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 1;
+
+    return mesh;
+  }, [fluidMaterial]);
 
   useEffect(
     () => () => {
@@ -256,6 +287,42 @@ function ContainedFluid({
     [fluidMaterial, sdfMap, surface]
   );
 
+  useEffect(() => {
+    const debug = () => {
+      const shader = fluidMaterial.userData.shader as
+        | { uniforms: Record<string, { value: THREE.Matrix4 }> }
+        | undefined;
+      const matrix = shader?.uniforms?.uInverseContainmentMatrix?.value;
+
+      return {
+        marchingCubesVisible,
+        waterVertices: waterMesh.geometry.getAttribute("position")?.count ?? 0,
+        waterVisibleFlag: !marchingCubesVisible,
+        invMatrixElements: matrix ? Array.from(matrix.elements).map((v) => Number(v.toFixed(3))) : null,
+        sdfRange: [field.sdf.minCorner.toArray(), field.sdf.dims, field.sdf.cellSize]
+      };
+    };
+
+    (window as unknown as Record<string, unknown>).__waterDebug = debug;
+    (window as unknown as Record<string, unknown>).__waterTune = (margin: number) => {
+      const shader = fluidMaterial.userData.shader as
+        | { uniforms: Record<string, { value: number }> }
+        | undefined;
+
+      if (shader) {
+        shader.uniforms.uContainmentMargin.value = margin;
+      }
+    };
+    (window as unknown as Record<string, unknown>).__waterMeshRef = waterMesh;
+
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__waterDebug;
+      delete (window as unknown as Record<string, unknown>).__waterTune;
+      delete (window as unknown as Record<string, unknown>).__waterMeshRef;
+    };
+  }, [fluidMaterial, marchingCubesVisible, waterMesh, field.sdf]);
+
+  // eslint-disable-next-line react-hooks/immutability
   useFrame((_, delta) => {
     if (!vesselRef.current) {
       return;
@@ -283,7 +350,21 @@ function ContainedFluid({
       .negate();
 
     if (mode === "static") {
-      const waterVolume = (fillPercent / 100) * field.fillModel.totalVolume;
+      if (marchingCubesVisible) {
+        setMarchingCubesVisible(false);
+      }
+
+      const capacity = field.fillModel.totalVolume;
+      let targetVolume = (fillPercent / 100) * capacity;
+
+      if (
+        maxContainedUnits !== null &&
+        maxContainedUnits < capacity &&
+        maxContainedUnits < targetVolume
+      ) {
+        targetVolume = Math.max(maxContainedUnits, 0);
+      }
+
       const renderModel = getFillModelForDirection(field.cappedGeometry, localUp, Number.POSITIVE_INFINITY, Math.PI / 90);
 
       let low = renderModel.minHeight;
@@ -293,22 +374,60 @@ function ContainedFluid({
       for (let iteration = 0; iteration < 60 && high - low > range * 1e-9; iteration += 1) {
         const mid = (low + high) / 2;
 
-        if (renderModel.volumeBelow(mid) < waterVolume) {
+        if (renderModel.volumeBelow(mid) < targetVolume) {
           low = mid;
         } else {
           high = mid;
         }
       }
 
-      setStaticSurface(state, localUp, (low + high) / 2, {
-        fieldStrength,
-        transitionWidth: cellSize * 1.35
-      });
+      const targetOffset = (low + high) / 2;
+      const runtime = waterRuntime.current;
 
-      writeDensityToSurface(surface, state, fieldStrength);
+      if (
+        !runtime.initialized ||
+        runtime.fieldGeometry !== field.cappedGeometry
+      ) {
+        runtime.offset = targetOffset;
+        runtime.initialized = true;
+        runtime.fieldGeometry = field.cappedGeometry;
+      } else {
+        runtime.offset += (targetOffset - runtime.offset) * Math.min(1, delta * 7);
+      }
+
+      const built = builtWaterState.current;
+      const dot =
+        !built.has
+          ? -1
+          : built.dirX * localUp.x + built.dirY * localUp.y + built.dirZ * localUp.z;
+      const needsRebuild =
+        !built.has ||
+        built.fieldGeometry !== field.cappedGeometry ||
+        Math.abs(built.offset - runtime.offset) > 0.0015 ||
+        dot < 0.99995;
+
+      if (needsRebuild) {
+        const previous = waterMesh.geometry;
+        // eslint-disable-next-line react-hooks/immutability
+        waterMesh.geometry = buildWaterBody(field.cappedGeometry, localUp, runtime.offset);
+        previous.dispose();
+
+        built.dirX = localUp.x;
+        built.dirY = localUp.y;
+        built.dirZ = localUp.z;
+        built.offset = runtime.offset;
+        built.fieldGeometry = field.cappedGeometry;
+        built.has = true;
+      }
+
       return;
     }
 
+    if (!marchingCubesVisible) {
+      setMarchingCubesVisible(true);
+    }
+
+    builtWaterState.current.has = false;
     const angleDelta = previousQuaternion.current.angleTo(vesselWorldQuaternion.current);
     const angularSpeed = delta > 0 ? angleDelta / delta : 0;
     previousQuaternion.current.copy(vesselWorldQuaternion.current);
@@ -318,40 +437,38 @@ function ContainedFluid({
 
     stepFluidState(state, localGravity.current, motionAmount);
 
-    writeDensityToSurface(surface, state, fieldStrength);
+    surface.reset();
+
+    const gridSize = state.size;
+
+    for (let z = 0; z < gridSize; z += 1) {
+      for (let y = 0; y < gridSize; y += 1) {
+        for (let x = 0; x < gridSize; x += 1) {
+          const index = x + y * gridSize + z * gridSize * gridSize;
+
+          if (state.solid[index] === 0) {
+            surface.setCell(x, y, z, 0);
+            continue;
+          }
+
+          surface.setCell(x, y, z, state.density[index] * fieldStrength);
+        }
+      }
+    }
 
     surface.blur(0.1);
     surface.update();
   });
 
-  return <primitive object={surface} />;
+  return (
+    <>
+      <primitive object={surface} visible={marchingCubesVisible} />
+      <primitive object={waterMesh} visible={!marchingCubesVisible} />
+    </>
+  );
 }
 
 const scratchUp = new THREE.Vector3();
-
-function writeDensityToSurface(surface: MarchingCubes, state: FluidState, fieldStrength: number) {
-  surface.reset();
-
-  const gridSize = state.size;
-
-  for (let z = 0; z < gridSize; z += 1) {
-    for (let y = 0; y < gridSize; y += 1) {
-      for (let x = 0; x < gridSize; x += 1) {
-        const index = x + y * gridSize + z * gridSize * gridSize;
-
-        if (state.solid[index] === 0) {
-          surface.setCell(x, y, z, 0);
-          continue;
-        }
-
-        const density = state.density[index];
-        surface.setCell(x, y, z, density * fieldStrength);
-      }
-    }
-  }
-
-  surface.update();
-}
 
 function createContainedFluidMaterial(field: ShapeField, sdfMap: THREE.Data3DTexture) {
   const material = new THREE.MeshPhysicalMaterial({
