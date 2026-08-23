@@ -258,6 +258,23 @@ function ContainedFluid({
     () => createContainedFluidMaterial(field, sdfMap),
     [field, sdfMap]
   );
+  const waterVolumeMaterial = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color("#58b7ff"),
+        emissive: new THREE.Color("#123b5d"),
+        emissiveIntensity: 0.3,
+        roughness: 0.12,
+        metalness: 0.01,
+        transparent: false,
+        opacity: 1,
+        transmission: 0,
+        thickness: 0.2,
+        depthWrite: true,
+        side: THREE.DoubleSide
+      }),
+    []
+  );
   const surface = useMemo(() => {
     const object = new MarchingCubes(fluidResolution, fluidMaterial, false, false, 60000);
     object.position.copy(center);
@@ -269,22 +286,23 @@ function ContainedFluid({
     return object;
   }, [center, fluidMaterial, size]);
   const waterMesh = useMemo(() => {
-    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), fluidMaterial);
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), waterVolumeMaterial);
 
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.renderOrder = 1;
 
     return mesh;
-  }, [fluidMaterial]);
+  }, [waterVolumeMaterial]);
 
   useEffect(
     () => () => {
       surface.geometry.dispose();
       fluidMaterial.dispose();
+      waterVolumeMaterial.dispose();
       sdfMap.dispose();
     },
-    [fluidMaterial, sdfMap, surface]
+    [fluidMaterial, waterVolumeMaterial, sdfMap, surface]
   );
 
   useEffect(() => {
