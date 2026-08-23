@@ -22,6 +22,8 @@ type SceneViewProps = {
   tiltX: number;
   tiltY: number;
   mode: "static" | "preview" | "dynamic";
+  viscosity: number;
+  surfaceTension: number;
   gravityEnabled: boolean;
   pouringEnabled: boolean;
   spilling: boolean;
@@ -83,6 +85,8 @@ function FluidShape({
   tiltX,
   tiltY,
   mode,
+  viscosity,
+  surfaceTension,
   gravityEnabled,
   pouringEnabled,
   spilling,
@@ -140,7 +144,14 @@ function FluidShape({
         </mesh>
 
         {mode === "dynamic" ? (
-          <ParticleFluid field={field} fillPercent={fillPercent} tiltX={tiltX} tiltY={tiltY} />
+          <ParticleFluid
+            field={field}
+            fillPercent={fillPercent}
+            tiltX={tiltX}
+            tiltY={tiltY}
+            viscosity={viscosity}
+            surfaceTension={surfaceTension}
+          />
         ) : (
           <ContainedFluid
             key={`${field.recipe.id}-${mode}-${gravityEnabled}-${pouringEnabled}`}

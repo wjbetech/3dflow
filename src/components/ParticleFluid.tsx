@@ -13,9 +13,11 @@ type Props = {
   fillPercent: number;
   tiltX: number;
   tiltY: number;
+  viscosity: number;
+  surfaceTension: number;
 };
 
-export function ParticleFluid({ field, fillPercent, tiltX, tiltY }: Props) {
+export function ParticleFluid({ field, fillPercent, tiltX, tiltY, viscosity, surfaceTension }: Props) {
   const count = Math.max(200, Math.round((fillPercent / 100) * 3500));
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -23,17 +25,20 @@ export function ParticleFluid({ field, fillPercent, tiltX, tiltY }: Props) {
   const { controller, positions } = useMemo(() => {
     const boundary = createSdfBoundary(field.sdf);
     const state = seedParticlesInBoundary(count, boundary, field.bounds, 0.035);
-    const solver = createPbfSolver({ particleRadius: 0.035, mouthY: field.mouthY });
+    const solver = createPbfSolver({ particleRadius: 0.035, mouthY: field.mouthY, viscosity, surfaceTension });
     const ctrl = new SimulationController(solver, state, boundary, { fixedDt: 1 / 60, maxSubSteps: 4 });
     const buf = new Float32Array(count * 3);
     return { controller: ctrl, positions: buf };
-  }, [field, count]);
+  }, [field, count, viscosity, surfaceTension]);
 
   useEffect(() => {
     const boundary = createSdfBoundary(field.sdf);
     controller.setBoundary(boundary);
-    (controller as unknown as { solver: { config: { mouthY: number | null } } }).solver.config.mouthY = field.mouthY;
-  }, [field, controller]);
+    const cfg = (controller as unknown as { solver: { config: { mouthY: number | null; viscosity: number; surfaceTension: number } } }).solver.config;
+    cfg.mouthY = field.mouthY;
+    cfg.viscosity = viscosity;
+    cfg.surfaceTension = surfaceTension;
+  }, [field, controller, viscosity, surfaceTension]);
 
   useFrame((_, delta) => {
     const tiltQuat = new THREE.Quaternion().setFromEuler(

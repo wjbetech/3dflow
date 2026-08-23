@@ -110,6 +110,42 @@ export class PbfSolver implements Solver {
       const ny = this.predicted[base + 1];
       const nz = this.predicted[base + 2];
       p.velocity.set((nx - p.position.x) / dt, (ny - p.position.y) / dt, (nz - p.position.z) / dt);
+      const viscosity = this.config.viscosity ?? 0.01;
+      if (viscosity > 0) {
+        const visc = new THREE.Vector3();
+        forEachNeighbor(i, this.predicted, h, this.hash, (j) => {
+          if (i === j) return;
+          const dx = this.predicted[i * 3] - this.predicted[j * 3];
+          const dy = this.predicted[i * 3 + 1] - this.predicted[j * 3 + 1];
+          const dz = this.predicted[i * 3 + 2] - this.predicted[j * 3 + 2];
+          const r = Math.hypot(dx, dy, dz);
+          const w = poly6(r, h);
+          visc.addScaledVector(
+            new THREE.Vector3(
+              state.particles[j].velocity.x - p.velocity.x,
+              state.particles[j].velocity.y - p.velocity.y,
+              state.particles[j].velocity.z - p.velocity.z
+            ),
+            w * viscosity
+          );
+        });
+        p.velocity.add(visc);
+      }
+      const surfaceTension = this.config.surfaceTension ?? 0.02;
+      if (surfaceTension > 0) {
+        const n = new THREE.Vector3();
+        forEachNeighbor(i, this.predicted, h, this.hash, (j) => {
+          if (i === j) return;
+          const dx = this.predicted[i * 3] - this.predicted[j * 3];
+          const dy = this.predicted[i * 3 + 1] - this.predicted[j * 3 + 1];
+          const dz = this.predicted[i * 3 + 2] - this.predicted[j * 3 + 2];
+          const r = Math.hypot(dx, dy, dz);
+          scratchVec.set(dx, dy, dz);
+          spikyGrad(scratchVec, r, h, gradScratch);
+          n.add(gradScratch);
+        });
+        p.velocity.addScaledVector(n, -surfaceTension * 0.001);
+      }
       p.velocity.multiplyScalar(0.995);
       p.position.set(nx, ny, nz);
       p.predicted.copy(p.position);
@@ -137,6 +173,8 @@ export function createPbfSolver(overrides: Partial<SimulationConfig> = {}): PbfS
     gravity: new THREE.Vector3(0, -9.81, 0),
     timeStep: 1 / 60,
     mouthY: null,
+    viscosity: 0.01,
+    surfaceTension: 0.02,
     ...overrides
   });
 }

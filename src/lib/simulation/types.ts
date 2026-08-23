@@ -13,6 +13,8 @@ export type SimulationConfig = {
   gravity: THREE.Vector3;
   timeStep: number;
   mouthY?: number | null;
+  viscosity?: number;
+  surfaceTension?: number;
 };
 
 export type SimulationState = {
